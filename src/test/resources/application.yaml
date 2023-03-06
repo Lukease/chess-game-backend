@@ -1,0 +1,20 @@
+web:
+  filter:
+    cors:
+      allowedHeaders: Origin,Content-Type,Accept,Authorization
+      allowedMethods: GET,POST,PUT,DELETE,ORIGIN
+      allowedOrigins: 'http://localhost:3000/'
+
+spring:
+  jpa:
+    show-sql: true
+    hibernate:
+      ddl-auto: update
+  datasource:
+    url: jdbc:h2:mem:db;DB_CLOSE_DELAY=-1
+    username: sa
+    password: sa
+    driverClassName: org.h2.Driver
+  jackson:
+    default-property-inclusion: non_null
+

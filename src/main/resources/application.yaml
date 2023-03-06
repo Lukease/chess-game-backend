@@ -1,0 +1,22 @@
+web:
+  filter:
+    cors:
+      allowedHeaders: Origin,Content-Type,Accept,Authorization
+      allowedMethods: GET,POST,PUT,DELETE,ORIGIN
+      allowedOrigins: 'http://localhost:3000/'
+
+spring:
+  jpa:
+    database: POSTGRESQL
+    show-sql: true
+    hibernate:
+      ddl-auto: update
+  datasource:
+    platform: postgres
+    url: jdbc:postgresql://localhost:5432/chess-db
+    username: user
+    password: admin
+    driverClassName: org.postgresql.Driver
+  jackson:
+    default-property-inclusion: non_null
+
