@@ -14,6 +14,7 @@ class Game {
     var lastMoveBlack: LocalDateTime? = null
     var lastMoveWhite: LocalDateTime? = null
     var timePerPlayerInSeconds: Int = 800
+    var gameStatus: String = "waiting room"
 
     @ManyToOne
     @JoinColumn(name = "player_white_id")

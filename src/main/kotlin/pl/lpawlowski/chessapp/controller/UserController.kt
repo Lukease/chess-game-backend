@@ -64,4 +64,14 @@ class UserController(
 
         return userService.updateUserEmail(user.login, changeEmailRequest.email)
     }
+
+    @PutMapping("/new-password")
+    fun editUserPassword(
+        @RequestBody changePasswordRequest: ChangePasswordRequest,
+        @RequestHeader("Authorization") authorization: String
+    ): UserDto {
+        val user: User = userService.findUserByAuthorizationToken(authorization)
+
+        return userService.updateUserPassword(user.login, changePasswordRequest.password)
+    }
 }
