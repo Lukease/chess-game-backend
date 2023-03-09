@@ -43,4 +43,9 @@ class GameController(
 
         return gameService.joinGame(user, joinGameRequest)
     }
+
+    @GetMapping("/get-all")
+    fun getAllCreatedGames(): List<GameDto> {
+        return gameService.getAllCreatedGames()
+    }
 }

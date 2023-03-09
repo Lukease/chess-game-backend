@@ -8,11 +8,19 @@ import pl.lpawlowski.chessapp.game.GameStatus
 import pl.lpawlowski.chessapp.model.game.*
 import pl.lpawlowski.chessapp.repositories.GamesRepository
 import java.time.LocalDateTime
+import java.util.stream.Collectors
 
 @Service
 class GameService(
     private val gamesRepository: GamesRepository,
 ) {
+    fun getAllCreatedGames(): List<GameDto> {
+        val createdGames = gamesRepository.findGamesByStatus(GameStatus.CREATED.name)
+            .orElseThrow { RuntimeException("Game not found!") }
+
+        return createdGames.stream().map(GameDto::fromDomain).collect(Collectors.toList())
+    }
+
     @Transactional
     fun createGame(user: User, gameCreateRequest: GameCreateRequest): Long {
         val game: Game = Game().apply {

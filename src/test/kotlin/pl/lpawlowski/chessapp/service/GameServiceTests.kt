@@ -8,6 +8,7 @@ import org.junit.jupiter.api.assertThrows
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.security.crypto.password.PasswordEncoder
+import pl.lpawlowski.chessapp.game.GameStatus
 import pl.lpawlowski.chessapp.model.game.GameCreateRequest
 import pl.lpawlowski.chessapp.model.game.GameMakeMoveRequest
 import pl.lpawlowski.chessapp.model.game.JoinGameRequest
@@ -134,5 +135,38 @@ class GameServiceTests {
 
         assertThat(gameWithJoinedPlayer.whitePlayer?.login).isEqualTo(user.login)
         assertThat(gameWithJoinedPlayer.blackPlayer?.login).isEqualTo(joiningUser.login)
+    }
+
+    @Test
+    fun testGetAllCreatedGame() {
+        val firstUserDto = UserDto(
+            login = "arek",
+            password = "arek12345",
+            email = "arek@onet.pl"
+        )
+
+        val secondUserDto = UserDto(
+            login = "Dawid",
+            password = "Dawid12345",
+            email = "dawid@onet.pl"
+        )
+
+        userService.saveUser(firstUserDto)
+        userService.saveUser(secondUserDto)
+
+        val allUsers = userRepository.findAll()
+
+        val firstUser = allUsers[0]
+        val secondUser = allUsers[1]
+
+        gameService.createGame(firstUser, GameCreateRequest(true, 800))
+        gameService.createGame(secondUser, GameCreateRequest(false, 200))
+
+        assertDoesNotThrow { gameService.getAllCreatedGames() }
+        val games = gameService.getAllCreatedGames()
+
+        assertThat(games.size).isEqualTo(2)
+        assertThat(games[0].gameStatus).isEqualTo(GameStatus.CREATED.name)
+        assertThat(games[1].gameStatus).isEqualTo(GameStatus.CREATED.name)
     }
 }
