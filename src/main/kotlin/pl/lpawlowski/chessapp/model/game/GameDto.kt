@@ -3,7 +3,7 @@ package pl.lpawlowski.chessapp.model.game
 import pl.lpawlowski.chessapp.entities.Game
 import java.time.LocalDateTime
 
-class GameDto(
+data class GameDto(
     val id: Long? = null,
     val moves: String,
     val lastMoveBlack: LocalDateTime? = null,

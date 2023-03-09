@@ -4,23 +4,15 @@ import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import pl.lpawlowski.chessapp.entities.Game
 import pl.lpawlowski.chessapp.entities.User
-import pl.lpawlowski.chessapp.model.game.GameCreateRequest
-import pl.lpawlowski.chessapp.model.game.GameDto
-import pl.lpawlowski.chessapp.model.game.GameMakeMoveRequest
-import pl.lpawlowski.chessapp.model.game.JoinGameRequest
+import pl.lpawlowski.chessapp.game.GameStatus
+import pl.lpawlowski.chessapp.model.game.*
 import pl.lpawlowski.chessapp.repositories.GamesRepository
 import java.time.LocalDateTime
-import java.util.stream.Collectors
 
 @Service
 class GameService(
     private val gamesRepository: GamesRepository,
 ) {
-    @Transactional
-    fun getUserGame(user: User): List<GameDto?> {
-        return gamesRepository.findByUser(user).stream().map(GameDto::fromDomain).collect(Collectors.toList())
-    }
-
     @Transactional
     fun createGame(user: User, gameCreateRequest: GameCreateRequest): Long {
         val game: Game = Game().apply {
@@ -39,19 +31,26 @@ class GameService(
     }
 
     @Transactional
-    fun makeMove(user: User, gameMakeMoveRequest: GameMakeMoveRequest): GameDto {
-        val game =
-            gamesRepository.findById(gameMakeMoveRequest.gameId).orElseThrow { RuntimeException("Game not found!") }
+    fun makeMove(user: User, gameMakeMoveRequest: GameMakeMoveRequest): MakeMoveResponse {
+        val game = getUserGame(user)
+        val pieces = listOf<Piece>()
+        val isCheck = true
+        val whoseTurn = "black"
+        val lastPlayerMove = LocalDateTime.now()
+        val historyOfMoves = ""
 
-        game.moves = "${game.moves},${gameMakeMoveRequest.move}"
 
+        game.moves = when (game.moves.isBlank()) {
+            true -> gameMakeMoveRequest.move
+            false -> "${game.moves},${gameMakeMoveRequest.move}"
+        }
         if (user == game.whitePlayer) {
             game.lastMoveWhite = LocalDateTime.now()
         } else {
             game.lastMoveBlack = LocalDateTime.now()
         }
 
-        return GameDto.fromDomain(game)
+        return MakeMoveResponse(pieces, isCheck, whoseTurn, lastPlayerMove, historyOfMoves)
     }
 
     @Transactional
@@ -65,8 +64,13 @@ class GameService(
         }
 
         game.lastMoveWhite = LocalDateTime.now()
-        game.gameStatus = "game"
+        game.gameStatus = GameStatus.IN_PROGRESS.name
 
         return GameDto.fromDomain(game)
+    }
+
+    private fun getUserGame(user: User): Game {
+        return gamesRepository.findByUserAndStatus(user, GameStatus.IN_PROGRESS.name)
+            .orElseThrow { RuntimeException("Game not found!") }
     }
 }
