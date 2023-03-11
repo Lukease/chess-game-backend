@@ -1,6 +1,9 @@
 package pl.lpawlowski.chessapp.model.game
 
 import pl.lpawlowski.chessapp.entities.Game
+import pl.lpawlowski.chessapp.entities.User
+import pl.lpawlowski.chessapp.game.GameStatus
+import pl.lpawlowski.chessapp.model.user.UserDto
 import java.time.LocalDateTime
 
 data class GameDto(
@@ -8,8 +11,10 @@ data class GameDto(
     val moves: String,
     val lastMoveBlack: LocalDateTime? = null,
     val lastMoveWhite: LocalDateTime? = null,
-    var timePerPlayerInSeconds: Int = 800,
-    var gameStatus: String = "waiting room"
+    var timePerPlayerInSeconds: Int = 200,
+    var gameStatus: String = GameStatus.CREATED.name,
+    var whitePlayer: UserDto? = null,
+    var blackPlayer: UserDto? = null
 ) {
     companion object {
         fun fromDomain(game: Game): GameDto {
@@ -19,7 +24,9 @@ data class GameDto(
                 lastMoveBlack = game.lastMoveBlack,
                 lastMoveWhite = game.lastMoveWhite,
                 timePerPlayerInSeconds = game.timePerPlayerInSeconds,
-                gameStatus = game.gameStatus
+                gameStatus = game.gameStatus,
+                blackPlayer = game.blackPlayer?.let { UserDto.fromDomain(it) },
+                whitePlayer = game.whitePlayer?.let { UserDto.fromDomain(it) }
             )
         }
     }

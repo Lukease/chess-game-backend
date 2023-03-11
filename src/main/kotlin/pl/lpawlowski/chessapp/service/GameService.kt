@@ -14,11 +14,11 @@ import java.util.stream.Collectors
 class GameService(
     private val gamesRepository: GamesRepository,
 ) {
+    @Transactional
     fun getAllCreatedGames(): List<GameDto> {
         val createdGames = gamesRepository.findGamesByStatus(GameStatus.CREATED.name)
-            .orElseThrow { RuntimeException("Game not found!") }
 
-        return createdGames.stream().map(GameDto::fromDomain).collect(Collectors.toList())
+        return createdGames.map { GameDto.fromDomain(it) }
     }
 
     @Transactional

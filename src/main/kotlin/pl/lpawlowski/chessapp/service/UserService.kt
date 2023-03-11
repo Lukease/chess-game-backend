@@ -4,10 +4,10 @@ import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import pl.lpawlowski.chessapp.entities.User
-import pl.lpawlowski.chessapp.model.user.UserDto
-import pl.lpawlowski.chessapp.model.user.UserLogInRequest
 import pl.lpawlowski.chessapp.exception.UserExistsException
 import pl.lpawlowski.chessapp.exception.WrongCredentialsException
+import pl.lpawlowski.chessapp.model.user.UserDto
+import pl.lpawlowski.chessapp.model.user.UserLogInRequest
 import pl.lpawlowski.chessapp.repositories.UsersRepository
 import java.time.LocalDateTime
 import java.util.*
@@ -88,6 +88,10 @@ class UserService(
         user.password = encodedPassword
 
         return UserDto.fromDomain(user)
+    }
+
+    fun getAllUsers(): List<UserDto?>? {
+        return usersRepository.findAll().map { UserDto.fromDomain(it) }
     }
 
     private fun findUserByLogin(login: String): User {

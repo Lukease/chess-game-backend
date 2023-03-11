@@ -9,6 +9,7 @@ import pl.lpawlowski.chessapp.exception.WrongCredentialsException
 import pl.lpawlowski.chessapp.model.user.*
 import pl.lpawlowski.chessapp.service.UserService
 
+
 @CrossOrigin(origins = ["http://localhost:3000/"])
 @RestController
 @RequestMapping(value = ["/users"])
@@ -73,5 +74,10 @@ class UserController(
         val user: User = userService.findUserByAuthorizationToken(authorization)
 
         return userService.updateUserPassword(user.login, changePasswordRequest.password)
+    }
+
+    @GetMapping("/get-all")
+    fun getAllUsers(): List<UserDto?>? {
+        return userService.getAllUsers()
     }
 }
