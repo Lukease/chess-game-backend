@@ -4,11 +4,11 @@ import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import pl.lpawlowski.chessapp.entities.Game
 import pl.lpawlowski.chessapp.entities.User
+import pl.lpawlowski.chessapp.exception.GameNotFoundException
 import pl.lpawlowski.chessapp.game.GameStatus
 import pl.lpawlowski.chessapp.model.game.*
 import pl.lpawlowski.chessapp.repositories.GamesRepository
 import java.time.LocalDateTime
-import java.util.stream.Collectors
 
 @Service
 class GameService(
@@ -19,6 +19,25 @@ class GameService(
         val createdGames = gamesRepository.findGamesByStatus(GameStatus.CREATED.name)
 
         return createdGames.map { GameDto.fromDomain(it) }
+    }
+
+    @Transactional
+    fun getUserActiveGame(user: User): GameDto? {
+        val game = gamesRepository.findActiveGamesByUser(user, GameStatus.FINISHED.name)
+
+        return if (game.isPresent){
+            GameDto.fromDomain(game.get())
+        } else {
+            null
+        }
+    }
+
+    @Transactional
+    fun resign(user: User) {
+        val game = gamesRepository.findActiveGamesByUser(user, GameStatus.FINISHED.name)
+            .orElseThrow { GameNotFoundException("User does not have an active game!") }
+
+        game.gameStatus = GameStatus.FINISHED.name
     }
 
     @Transactional

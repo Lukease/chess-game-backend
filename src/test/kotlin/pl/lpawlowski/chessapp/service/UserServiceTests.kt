@@ -11,6 +11,7 @@ import org.springframework.security.crypto.password.PasswordEncoder
 import pl.lpawlowski.chessapp.entities.User
 import pl.lpawlowski.chessapp.exception.UserExistsException
 import pl.lpawlowski.chessapp.exception.WrongCredentialsException
+import pl.lpawlowski.chessapp.model.user.ChangePasswordRequest
 import pl.lpawlowski.chessapp.model.user.UserDto
 import pl.lpawlowski.chessapp.model.user.UserLogInRequest
 import pl.lpawlowski.chessapp.repositories.UsersRepository
@@ -108,9 +109,11 @@ class UserServiceTests {
 
         userService.saveUser(userDto)
 
+        val oldPassword = "jan12345"
         val newPassword = "123456!A"
+        val passwordRequest = ChangePasswordRequest(oldPassword,newPassword)
 
-        userService.updateUserPassword(userDto.login, newPassword)
+        userService.updateUserPassword(userDto.login, passwordRequest)
 
         val user: User = userRepository.findAll()[0]
         val logInRequest = UserLogInRequest(userDto.login, newPassword)

@@ -73,7 +73,7 @@ class UserController(
     ): UserDto {
         val user: User = userService.findUserByAuthorizationToken(authorization)
 
-        return userService.updateUserPassword(user.login, changePasswordRequest.password)
+        return userService.updateUserPassword(user.login, changePasswordRequest)
     }
 
     @GetMapping("/get-all")

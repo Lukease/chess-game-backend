@@ -16,6 +16,7 @@ class Game {
     var lastMoveWhite: LocalDateTime? = null
     var timePerPlayerInSeconds: Int = 800
     var gameStatus: String = GameStatus.CREATED.name
+    var result: String? = null
 
     @ManyToOne
     @JoinColumn(name = "player_white_id")
@@ -24,4 +25,7 @@ class Game {
     @ManyToOne
     @JoinColumn(name = "player_black_id")
     var blackPlayer: User? = null
+
+    @OneToMany(mappedBy = "game")
+    var drawOffers: List<DrawOffers> = listOf()
 }

@@ -6,6 +6,7 @@ import org.springframework.transaction.annotation.Transactional
 import pl.lpawlowski.chessapp.entities.User
 import pl.lpawlowski.chessapp.exception.UserExistsException
 import pl.lpawlowski.chessapp.exception.WrongCredentialsException
+import pl.lpawlowski.chessapp.model.user.ChangePasswordRequest
 import pl.lpawlowski.chessapp.model.user.UserDto
 import pl.lpawlowski.chessapp.model.user.UserLogInRequest
 import pl.lpawlowski.chessapp.repositories.UsersRepository
@@ -81,13 +82,18 @@ class UserService(
     }
 
     @Transactional
-    fun updateUserPassword(login: String, newPassword: String): UserDto {
+    fun updateUserPassword(login: String, changePasswordRequest: ChangePasswordRequest): UserDto {
         val user: User = usersRepository.findByLogin(login).orElseThrow { RuntimeException("User not found!") }
-        val encodedPassword = passwordEncoder.encode(newPassword)
 
-        user.password = encodedPassword
+        return if (passwordEncoder.matches(changePasswordRequest.oldPassword, user.password)) {
+            val encodedPassword = passwordEncoder.encode(changePasswordRequest.password)
 
-        return UserDto.fromDomain(user)
+            user.password = encodedPassword
+
+            UserDto.fromDomain(user)
+        } else {
+            throw WrongCredentialsException("Wrong data!")
+        }
     }
 
     fun getAllUsers(): List<UserDto?>? {

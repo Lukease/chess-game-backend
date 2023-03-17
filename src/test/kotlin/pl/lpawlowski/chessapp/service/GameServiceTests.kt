@@ -30,9 +30,6 @@ class GameServiceTests {
     @Autowired
     lateinit var userRepository: UsersRepository
 
-    @Autowired
-    lateinit var passwordEncoder: PasswordEncoder
-
     @AfterEach
     fun cleanUpDatabase() {
         gamesRepository.deleteAll()
@@ -53,9 +50,10 @@ class GameServiceTests {
 
         gameService.createGame(user, GameCreateRequest(true, 800))
 
-        val allGames = gamesRepository.findAll()
+        val games = gamesRepository.findAll()
 
-        assertThat(allGames.size).isEqualTo(1)
+        assertThat(games.size).isEqualTo(1)
+        assertThat(games[0].gameStatus).isEqualTo(GameStatus.CREATED.name)
     }
 
     @Test

@@ -19,4 +19,8 @@ class User {
     var gamesAsWhite: List<Game> = listOf()
     @OneToMany(mappedBy = "blackPlayer")
     var gamesAsBlack: List<Game> = listOf()
+    @OneToMany(mappedBy = "playerOffered")
+    var offeredDraw: List<DrawOffers> = listOf()
+    @OneToMany(mappedBy = "playerResponding")
+    var respondingDraw: List<DrawOffers> = listOf()
 }
