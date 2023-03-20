@@ -43,8 +43,8 @@ class DrawOffersService(
 
     @Transactional
     fun responseOffer(user: User, gameDrawOfferRequest: GameDrawOfferRequest) {
-        val drawOffer = drawOffersRepository.findByUserAndStatus(user,DrawOffersStatus.OFFERED.name)
-                .orElseThrow{ DrawOffersNotFoundException("Offer not found!") }
+        val drawOffer = drawOffersRepository.findByUserAndStatus(user, DrawOffersStatus.OFFERED.name)
+            .orElseThrow { DrawOffersNotFoundException("Offer not found!") }
 
 
         if (gameDrawOfferRequest.playerResponse) {

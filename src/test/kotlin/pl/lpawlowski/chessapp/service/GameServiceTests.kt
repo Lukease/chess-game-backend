@@ -7,7 +7,6 @@ import org.junit.jupiter.api.assertDoesNotThrow
 import org.junit.jupiter.api.assertThrows
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
-import org.springframework.security.crypto.password.PasswordEncoder
 import pl.lpawlowski.chessapp.game.GameStatus
 import pl.lpawlowski.chessapp.model.game.GameCreateRequest
 import pl.lpawlowski.chessapp.model.game.GameMakeMoveRequest
@@ -106,7 +105,6 @@ class GameServiceTests {
         userService.saveUser(userDto)
 
         val allUsers = userRepository.findAll()
-
         val user = allUsers[0]
 
         gameService.createGame(user, GameCreateRequest(true, 800))
@@ -153,14 +151,13 @@ class GameServiceTests {
         userService.saveUser(secondUserDto)
 
         val allUsers = userRepository.findAll()
-
         val firstUser = allUsers[0]
         val secondUser = allUsers[1]
 
         gameService.createGame(firstUser, GameCreateRequest(true, 800))
         gameService.createGame(secondUser, GameCreateRequest(false, 200))
-
         assertDoesNotThrow { gameService.getAllCreatedGames() }
+
         val games = gameService.getAllCreatedGames()
 
         assertThat(games.size).isEqualTo(2)

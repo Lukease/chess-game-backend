@@ -111,7 +111,7 @@ class UserServiceTests {
 
         val oldPassword = "jan12345"
         val newPassword = "123456!A"
-        val passwordRequest = ChangePasswordRequest(oldPassword,newPassword)
+        val passwordRequest = ChangePasswordRequest(oldPassword, newPassword)
 
         userService.updateUserPassword(userDto.login, passwordRequest)
 

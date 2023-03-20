@@ -101,7 +101,6 @@ class DrawOffersTests {
 
         gameService.joinGame(secondUser, JoinGameRequest(game.id!!))
         drawOffersService.createOffer(firstUser)
-
         drawOffersService.responseOffer(secondUser, GameDrawOfferRequest(game.id!!, true))
 
         val drawOffers = drawOffersRepository.findAll()

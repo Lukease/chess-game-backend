@@ -71,6 +71,4 @@ class GameController(
             ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.message)
         }
     }
-
-    // todo draw
 }

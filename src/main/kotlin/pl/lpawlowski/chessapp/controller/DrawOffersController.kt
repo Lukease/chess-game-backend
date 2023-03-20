@@ -22,7 +22,7 @@ class DrawOffersController(
         return drawOffersService.createOffer(user)
     }
 
-    @PostMapping("/response")
+    @PutMapping("/response")
     fun responseOffer(
         @RequestHeader("Authorization") authorization: String,
         @RequestBody gameDrawOfferRequest: GameDrawOfferRequest
