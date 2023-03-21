@@ -101,12 +101,20 @@ class DrawOffersTests {
 
         gameService.joinGame(secondUser, JoinGameRequest(game.id!!))
         drawOffersService.createOffer(firstUser)
-        drawOffersService.responseOffer(secondUser, GameDrawOfferRequest(game.id!!, true))
+        drawOffersService.responseOffer(secondUser, GameDrawOfferRequest(game.id!!, false))
 
         val drawOffers = drawOffersRepository.findAll()
 
-        assertThat(drawOffers[0].game.gameStatus).isEqualTo(GameStatus.FINISHED.name)
-        assertThat(drawOffers[0].game.result).isEqualTo(GameResult.DRAW.name)
-        assertThat(drawOffers[0].status).isEqualTo(DrawOffersStatus.ACCEPTED.name)
+        assertThat(drawOffers[0].game.gameStatus).isEqualTo(GameStatus.IN_PROGRESS.name)
+        assertThat(drawOffers[0].status).isEqualTo(DrawOffersStatus.REJECTED.name)
+
+        drawOffersService.createOffer(firstUser)
+        drawOffersService.responseOffer(secondUser, GameDrawOfferRequest(game.id!!, true))
+
+        val twoDrawOffers = drawOffersRepository.findAll()
+
+        assertThat(twoDrawOffers[1].game.gameStatus).isEqualTo(GameStatus.FINISHED.name)
+        assertThat(twoDrawOffers[1].game.result).isEqualTo(GameResult.DRAW.name)
+        assertThat(twoDrawOffers[1].status).isEqualTo(DrawOffersStatus.ACCEPTED.name)
     }
 }
