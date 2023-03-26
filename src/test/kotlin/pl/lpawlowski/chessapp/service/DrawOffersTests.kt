@@ -10,6 +10,7 @@ import pl.lpawlowski.chessapp.game.GameResult
 import pl.lpawlowski.chessapp.game.GameStatus
 import pl.lpawlowski.chessapp.model.game.GameCreateRequest
 import pl.lpawlowski.chessapp.model.game.JoinGameRequest
+import pl.lpawlowski.chessapp.model.offers.DrawOffersDto
 import pl.lpawlowski.chessapp.model.offers.GameDrawOfferRequest
 import pl.lpawlowski.chessapp.model.user.UserDto
 import pl.lpawlowski.chessapp.repositories.DrawOffersRepository
@@ -116,5 +117,41 @@ class DrawOffersTests {
         assertThat(twoDrawOffers[1].game.gameStatus).isEqualTo(GameStatus.FINISHED.name)
         assertThat(twoDrawOffers[1].game.result).isEqualTo(GameResult.DRAW.name)
         assertThat(twoDrawOffers[1].status).isEqualTo(DrawOffersStatus.ACCEPTED.name)
+    }
+
+    @Test
+    fun getDrawOffer() {
+        val firstUserDto = UserDto(
+            login = "Kamil",
+            password = "Kamil12345!",
+            email = "Kamil@onet.pl"
+        )
+
+        val secondUserDto = UserDto(
+            login = "Mateusz",
+            password = "Mateusz12345!",
+            email = "Mateusz@onet.pl"
+        )
+
+        userService.saveUser(firstUserDto)
+        userService.saveUser(secondUserDto)
+
+        val allUsers = userRepository.findAll()
+        val firstUser = allUsers[0]
+        val secondUser = allUsers[0]
+
+        gameService.createGame(firstUser, GameCreateRequest(true, 800))
+
+        val game = gamesRepository.findAll()[0]
+
+        gameService.joinGame(secondUser, JoinGameRequest(game.id!!))
+        drawOffersService.createOffer(firstUser)
+
+        val allOffer = drawOffersRepository.findAll()
+        val offerDto = DrawOffersDto.fromDomain(allOffer[0])
+        val offer = drawOffersService.getDrawOffer(secondUser)
+
+        assertThat(offer.status).isEqualTo(DrawOffersStatus.OFFERED.name)
+        assertThat(offer.id).isEqualTo(offerDto.id)
     }
 }

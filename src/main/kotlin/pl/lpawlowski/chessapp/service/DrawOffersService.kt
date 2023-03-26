@@ -8,6 +8,7 @@ import pl.lpawlowski.chessapp.exception.DrawOffersNotFoundException
 import pl.lpawlowski.chessapp.game.DrawOffersStatus
 import pl.lpawlowski.chessapp.game.GameResult
 import pl.lpawlowski.chessapp.game.GameStatus
+import pl.lpawlowski.chessapp.model.offers.DrawOffersDto
 import pl.lpawlowski.chessapp.model.offers.GameDrawOfferRequest
 import pl.lpawlowski.chessapp.repositories.DrawOffersRepository
 import pl.lpawlowski.chessapp.repositories.GamesRepository
@@ -55,5 +56,12 @@ class DrawOffersService(
         } else {
             drawOffer.status = DrawOffersStatus.REJECTED.name
         }
+    }
+
+    fun getDrawOffer(user: User): DrawOffersDto{
+        val drawOffer = drawOffersRepository.findByUserAndStatus(user, DrawOffersStatus.OFFERED.name)
+            .orElseThrow { DrawOffersNotFoundException("Offer not found!") }
+
+        return DrawOffersDto.fromDomain(drawOffer)
     }
 }

@@ -2,6 +2,7 @@ package pl.lpawlowski.chessapp.controller
 
 import org.springframework.web.bind.annotation.*
 import pl.lpawlowski.chessapp.entities.User
+import pl.lpawlowski.chessapp.model.offers.DrawOffersDto
 import pl.lpawlowski.chessapp.model.offers.GameDrawOfferRequest
 import pl.lpawlowski.chessapp.service.DrawOffersService
 import pl.lpawlowski.chessapp.service.UserService
@@ -30,5 +31,12 @@ class DrawOffersController(
         val user: User = userService.findUserByAuthorizationToken(authorization)
 
         return drawOffersService.responseOffer(user, gameDrawOfferRequest)
+    }
+
+    @GetMapping
+    fun getDrawOffer(@RequestHeader("Authorization") authorization: String): DrawOffersDto {
+        val user: User = userService.findUserByAuthorizationToken(authorization)
+
+        return drawOffersService.getDrawOffer(user)
     }
 }
