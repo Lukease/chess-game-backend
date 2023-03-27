@@ -2,20 +2,20 @@ package pl.lpawlowski.chessapp.model.history
 
 import pl.lpawlowski.chessapp.model.chess_possible_move.Move
 import pl.lpawlowski.chessapp.model.pieces.Piece
-import pl.lpawlowski.chessapp.model.suppliers.Field
-import pl.lpawlowski.chessapp.model.suppliers.MoveType
+import pl.lpawlowski.chessapp.service.suppliers.Field
+import pl.lpawlowski.chessapp.service.suppliers.MoveType
 
 class PlayerMove(
     val id: Long?,
-    private val specialMove: MoveType?,
-    private val fieldFrom: Field,
+    val specialMove: MoveType?,
+    val fieldFrom: Field,
     val pieceFrom: Piece?,
-    private val fieldTo: Field,
+    val fieldTo: Field,
     val pieceTo: Piece?,
     val additionalField: Field?,
-    private var fieldFromName: String,
+    var fieldFromName: String,
     val secondMove: Move?,
-    private val promotedPiece: Piece?,
+    val promotedPiece: Piece?,
     val isCheck: Boolean,
 ) {
 

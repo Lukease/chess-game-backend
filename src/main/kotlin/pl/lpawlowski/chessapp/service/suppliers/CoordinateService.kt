@@ -1,4 +1,4 @@
-package pl.lpawlowski.chessapp.model.suppliers
+package pl.lpawlowski.chessapp.service.suppliers
 
 import pl.lpawlowski.chessapp.model.chess_possible_move.Coordinate
 

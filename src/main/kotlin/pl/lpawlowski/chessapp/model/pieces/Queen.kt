@@ -1,7 +1,7 @@
 package pl.lpawlowski.chessapp.model.pieces
 
 import pl.lpawlowski.chessapp.model.chess_possible_move.Vector2d
-import pl.lpawlowski.chessapp.model.suppliers.MovingStrategies
+import pl.lpawlowski.chessapp.service.suppliers.MovingStrategies
 
 class Queen(
     color: String,
