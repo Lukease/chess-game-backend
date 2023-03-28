@@ -7,6 +7,8 @@ import pl.lpawlowski.chessapp.entities.User
 import pl.lpawlowski.chessapp.exception.GameNotFoundException
 import pl.lpawlowski.chessapp.game.GameStatus
 import pl.lpawlowski.chessapp.model.game.*
+import pl.lpawlowski.chessapp.model.game.Piece
+import pl.lpawlowski.chessapp.model.pieces.*
 import pl.lpawlowski.chessapp.repositories.GamesRepository
 import java.time.LocalDateTime
 
@@ -25,7 +27,7 @@ class GameService(
     fun getUserActiveGame(user: User): GameDto? {
         val game = gamesRepository.findActiveGamesByUser(user, GameStatus.FINISHED.name)
 
-        return if (game.isPresent){
+        return if (game.isPresent) {
             GameDto.fromDomain(game.get())
         } else {
             null
@@ -50,6 +52,7 @@ class GameService(
             } else {
                 blackPlayer = user
             }
+            pieces = getDefaultChessArrangement()
         }
 
         val save: Game = gamesRepository.save(game)
@@ -99,5 +102,42 @@ class GameService(
     private fun getUserGame(user: User): Game {
         return gamesRepository.findByUserAndStatus(user, GameStatus.IN_PROGRESS.name)
             .orElseThrow { RuntimeException("Game not found!") }
+    }
+
+    private fun getDefaultChessArrangement(): List<pl.lpawlowski.chessapp.model.pieces.Piece> {
+        return listOf(
+            Pawn("white", "A2", "Pawn"),
+            Pawn("white", "B2", "Pawn"),
+            Pawn("white", "C2", "Pawn"),
+            Pawn("white", "D2", "Pawn"),
+            Pawn("white", "E2", "Pawn"),
+            Pawn("white", "F2", "Pawn"),
+            Pawn("white", "G2", "Pawn"),
+            Pawn("white", "H2", "Pawn"),
+            Pawn("black", "A7", "Pawn"),
+            Pawn("black", "B7", "Pawn"),
+            Pawn("black", "C7", "Pawn"),
+            Pawn("black", "D7", "Pawn"),
+            Pawn("black", "E7", "Pawn"),
+            Pawn("black", "F7", "Pawn"),
+            Pawn("black", "G7", "Pawn"),
+            Pawn("black", "H7", "Pawn"),
+            Rook("white", "A1", "Rook"),
+            Rook("white", "H1", "Rook"),
+            Rook("black", "A8", "Rook"),
+            Rook("black", "H8", "Rook"),
+            Knight("white", "B1", "Knight"),
+            Knight("white", "G1", "Knight"),
+            Knight("black", "G8", "Knight"),
+            Knight("black", "B8", "Knight"),
+            Bishop("white", "C1", "Bishop"),
+            Bishop("white", "F1", "Bishop"),
+            Bishop("black", "C8", "Bishop"),
+            Bishop("black", "F8", "Bishop"),
+            King("black", "E8", "King"),
+            King("white", "E1", "King"),
+            Queen("white", "D1", "Queen"),
+            Queen("black", "D8", "Queen"),
+        )
     }
 }

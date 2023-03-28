@@ -9,7 +9,7 @@ import pl.lpawlowski.chessapp.service.suppliers.MoveType
 
 abstract class Piece(
     val color: String,
-    id: String,
+    val id: String,
     private val name: String,
     val movingStrategies: List<MovingStrategy>,
 ) {
@@ -18,9 +18,9 @@ abstract class Piece(
     private var hasMoved: Boolean = false
     abstract fun getAllPossibleDirections(): List<Vector2d>
 
-    fun getAllPossibleDirectionsWithColor(): Any {
+    fun getAllPossibleDirectionsWithColor(): List<Vector2d> {
         return if (name == "Pawn" && color == "black") {
-            getAllPossibleDirections().map { Vector2d(it.x, it.y * -1) }.toTypedArray()
+            getAllPossibleDirections().map { Vector2d(it.x, it.y * -1) }.toList()
         } else {
             getAllPossibleDirections()
         }

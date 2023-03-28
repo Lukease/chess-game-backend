@@ -1,5 +1,6 @@
 package pl.lpawlowski.chessapp.model.game
 
+import pl.lpawlowski.chessapp.model.pieces.Piece
 import java.time.LocalDateTime
 
 data class GameCreateRequest(

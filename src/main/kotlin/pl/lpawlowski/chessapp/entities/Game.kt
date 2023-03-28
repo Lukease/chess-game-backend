@@ -1,6 +1,7 @@
 package pl.lpawlowski.chessapp.entities
 
 import pl.lpawlowski.chessapp.game.GameStatus
+import pl.lpawlowski.chessapp.model.pieces.Piece
 import java.time.LocalDateTime
 import javax.persistence.*
 
@@ -17,6 +18,7 @@ class Game {
     var timePerPlayerInSeconds: Int = 800
     var gameStatus: String = GameStatus.CREATED.name
     var result: String? = null
+    lateinit var pieces: List<Piece>
 
     @ManyToOne
     @JoinColumn(name = "player_white_id")

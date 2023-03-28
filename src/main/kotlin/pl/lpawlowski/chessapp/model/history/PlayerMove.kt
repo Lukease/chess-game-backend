@@ -2,7 +2,6 @@ package pl.lpawlowski.chessapp.model.history
 
 import pl.lpawlowski.chessapp.model.chess_possible_move.Move
 import pl.lpawlowski.chessapp.model.pieces.Piece
-import pl.lpawlowski.chessapp.service.suppliers.Field
 import pl.lpawlowski.chessapp.service.suppliers.MoveType
 
 class PlayerMove(
