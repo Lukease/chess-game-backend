@@ -1,4 +1,4 @@
-package pl.lpawlowski.chessapp.service.suppliers
+package pl.lpawlowski.chessapp.game.engine
 
 import pl.lpawlowski.chessapp.model.chess_possible_move.Move
 import pl.lpawlowski.chessapp.model.pieces.Pawn

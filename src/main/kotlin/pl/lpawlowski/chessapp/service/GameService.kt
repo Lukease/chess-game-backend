@@ -7,14 +7,15 @@ import pl.lpawlowski.chessapp.entities.User
 import pl.lpawlowski.chessapp.exception.GameNotFoundException
 import pl.lpawlowski.chessapp.game.GameStatus
 import pl.lpawlowski.chessapp.model.game.*
-import pl.lpawlowski.chessapp.model.game.Piece
 import pl.lpawlowski.chessapp.model.pieces.*
 import pl.lpawlowski.chessapp.repositories.GamesRepository
+import pl.lpawlowski.chessapp.game.engine.GameEngine
 import java.time.LocalDateTime
 
 @Service
 class GameService(
     private val gamesRepository: GamesRepository,
+    private val gameEngine: GameEngine
 ) {
     @Transactional
     fun getAllCreatedGames(): List<GameDto> {
@@ -46,13 +47,12 @@ class GameService(
     fun createGame(user: User, gameCreateRequest: GameCreateRequest): Long {
         val game: Game = Game().apply {
             timePerPlayerInSeconds = gameCreateRequest.timePerPlayerInSeconds
-
+            fen = getDefaultFen()
             if (gameCreateRequest.isWhitePlayer) {
                 whitePlayer = user
             } else {
                 blackPlayer = user
             }
-            pieces = getDefaultChessArrangement()
         }
 
         val save: Game = gamesRepository.save(game)
@@ -79,12 +79,13 @@ class GameService(
         } else {
             game.lastMoveBlack = LocalDateTime.now()
         }
+        val pieceDto = pieces.map { PieceDto.fromDomain(it) }
 
-        return MakeMoveResponse(pieces, isCheck, whoseTurn, lastPlayerMove, historyOfMoves)
+        return MakeMoveResponse(pieceDto, isCheck, historyOfMoves, GameDto.fromDomain(game))
     }
 
     @Transactional
-    fun joinGame(user: User, joinGameRequest: JoinGameRequest): GameDto {
+    fun joinGame(user: User, joinGameRequest: JoinGameRequest): MakeMoveResponse {
         val game = gamesRepository.findById(joinGameRequest.gameId).orElseThrow { RuntimeException("Game not found!") }
 
         if (game.whitePlayer == null) {
@@ -93,10 +94,14 @@ class GameService(
             game.blackPlayer = user
         }
 
+        val pieces = gameEngine.convertFenToPiecesList(getDefaultFen())
+        val piecesWithCorrectMoves = gameEngine.getAllPossibleMovesOfPlayer(pieces, "white")
+
         game.lastMoveWhite = LocalDateTime.now()
         game.gameStatus = GameStatus.IN_PROGRESS.name
 
-        return GameDto.fromDomain(game)
+        return MakeMoveResponse(piecesWithCorrectMoves, false, "", GameDto.fromDomain(game))
+
     }
 
     private fun getUserGame(user: User): Game {
@@ -104,40 +109,7 @@ class GameService(
             .orElseThrow { RuntimeException("Game not found!") }
     }
 
-    private fun getDefaultChessArrangement(): List<pl.lpawlowski.chessapp.model.pieces.Piece> {
-        return listOf(
-            Pawn("white", "A2", "Pawn"),
-            Pawn("white", "B2", "Pawn"),
-            Pawn("white", "C2", "Pawn"),
-            Pawn("white", "D2", "Pawn"),
-            Pawn("white", "E2", "Pawn"),
-            Pawn("white", "F2", "Pawn"),
-            Pawn("white", "G2", "Pawn"),
-            Pawn("white", "H2", "Pawn"),
-            Pawn("black", "A7", "Pawn"),
-            Pawn("black", "B7", "Pawn"),
-            Pawn("black", "C7", "Pawn"),
-            Pawn("black", "D7", "Pawn"),
-            Pawn("black", "E7", "Pawn"),
-            Pawn("black", "F7", "Pawn"),
-            Pawn("black", "G7", "Pawn"),
-            Pawn("black", "H7", "Pawn"),
-            Rook("white", "A1", "Rook"),
-            Rook("white", "H1", "Rook"),
-            Rook("black", "A8", "Rook"),
-            Rook("black", "H8", "Rook"),
-            Knight("white", "B1", "Knight"),
-            Knight("white", "G1", "Knight"),
-            Knight("black", "G8", "Knight"),
-            Knight("black", "B8", "Knight"),
-            Bishop("white", "C1", "Bishop"),
-            Bishop("white", "F1", "Bishop"),
-            Bishop("black", "C8", "Bishop"),
-            Bishop("black", "F8", "Bishop"),
-            King("black", "E8", "King"),
-            King("white", "E1", "King"),
-            Queen("white", "D1", "Queen"),
-            Queen("black", "D8", "Queen"),
-        )
+    private fun getDefaultFen(): String {
+        return "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR"
     }
 }

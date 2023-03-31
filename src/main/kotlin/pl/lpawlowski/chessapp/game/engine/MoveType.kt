@@ -1,4 +1,4 @@
-package pl.lpawlowski.chessapp.service.suppliers
+package pl.lpawlowski.chessapp.game.engine
 
 class MoveType(
     val name: String,

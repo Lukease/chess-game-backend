@@ -41,7 +41,7 @@ class GameController(
     fun joinGame(
         @RequestHeader("Authorization") authorization: String,
         @RequestBody joinGameRequest: JoinGameRequest
-    ): GameDto {
+    ): MakeMoveResponse {
         val user: User = userService.findUserByAuthorizationToken(authorization)
 
         return gameService.joinGame(user, joinGameRequest)

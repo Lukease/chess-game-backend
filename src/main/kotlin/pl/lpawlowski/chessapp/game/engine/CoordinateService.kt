@@ -1,4 +1,4 @@
-package pl.lpawlowski.chessapp.service.suppliers
+package pl.lpawlowski.chessapp.game.engine
 
 import pl.lpawlowski.chessapp.model.chess_possible_move.Coordinate
 
@@ -20,15 +20,13 @@ class CoordinateService {
 
         private val allCoordinate = createAllCoordinate()
 
-        fun getCoordinateById(id: String) : Coordinate {
+        fun getCoordinateById(id: String): Coordinate {
             val column = id[0].toString()
             val row = id[1].toString()
+            val x = id[0].uppercaseChar() - 'A' + 1
+            val y = id[1].code
 
-            return allCoordinate.find { it.boardColumn == column && it.boardRow == row }!!
-        }
-
-        fun getCoordinateByColumnAndRow(column: Int, row: Int): Coordinate{
-            return allCoordinate.find { it.x == column && it.y == row }!!
+            return Coordinate(x, y, column, row)
         }
     }
 }

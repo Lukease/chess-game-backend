@@ -1,6 +1,4 @@
-package pl.lpawlowski.chessapp.service.suppliers
-
-import pl.lpawlowski.chessapp.model.pieces.Piece
+package pl.lpawlowski.chessapp.game.engine
 
 class MovingService {
 //    private var isMovingPiece = false
