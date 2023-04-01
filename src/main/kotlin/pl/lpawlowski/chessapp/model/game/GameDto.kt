@@ -26,8 +26,8 @@ data class GameDto(
                 timePerPlayerInSeconds = game.timePerPlayerInSeconds,
                 gameStatus = game.gameStatus,
                 fen = game.fen,
-                blackPlayer = game.blackPlayer?.let { UserDto.fromDomain(it) },
-                whitePlayer = game.whitePlayer?.let { UserDto.fromDomain(it) },
+                blackPlayer = game.blackPlayer?.let { UserDto.toGameInfo(it) },
+                whitePlayer = game.whitePlayer?.let { UserDto.toGameInfo(it) },
             )
         }
     }

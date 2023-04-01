@@ -17,8 +17,7 @@ import pl.lpawlowski.chessapp.repositories.DrawOffersRepository
 import pl.lpawlowski.chessapp.repositories.GamesRepository
 import pl.lpawlowski.chessapp.repositories.UsersRepository
 
-@SpringBootTest
-class DrawOffersTests {
+class DrawOffersTests: BasicIntegrationTest() {
     @Autowired
     lateinit var gameService: GameService
 
@@ -29,9 +28,6 @@ class DrawOffersTests {
     lateinit var userService: UserService
 
     @Autowired
-    lateinit var userRepository: UsersRepository
-
-    @Autowired
     lateinit var drawOffersService: DrawOffersService
 
     @Autowired
@@ -40,6 +36,7 @@ class DrawOffersTests {
     @AfterEach
     fun cleanUpDatabase() {
         drawOffersRepository.deleteAll()
+        gamesRepository.deleteAll()
     }
 
     @Test

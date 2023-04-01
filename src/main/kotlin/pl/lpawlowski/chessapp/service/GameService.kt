@@ -4,7 +4,7 @@ import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import pl.lpawlowski.chessapp.entities.Game
 import pl.lpawlowski.chessapp.entities.User
-import pl.lpawlowski.chessapp.exception.GameNotFoundException
+import pl.lpawlowski.chessapp.exception.NotFound
 import pl.lpawlowski.chessapp.game.GameStatus
 import pl.lpawlowski.chessapp.model.game.*
 import pl.lpawlowski.chessapp.model.pieces.*
@@ -36,9 +36,21 @@ class GameService(
     }
 
     @Transactional
+    fun getUserActiveGameAndReturnMoves(user: User): MakeMoveResponse {
+        val game = getUserGame(user)
+        val pieces = gameEngine.convertFenToPiecesList(game.fen)
+        val color = if (user.login == game.whitePlayer?.login) "white" else "black"
+        val piecesWithCorrectMoves = gameEngine.getAllPossibleMovesOfPlayer(pieces, color)
+        val moves = game.moves.split(",")
+        val whoseTurn = if (moves.size % 2 != 0) "white" else "black"
+
+        return MakeMoveResponse(piecesWithCorrectMoves, GameDto.fromDomain(game), whoseTurn)
+    }
+
+    @Transactional
     fun resign(user: User) {
         val game = gamesRepository.findActiveGamesByUser(user, GameStatus.FINISHED.name)
-            .orElseThrow { GameNotFoundException("User does not have an active game!") }
+            .orElseThrow { NotFound("User does not have an active game!") }
 
         game.gameStatus = GameStatus.FINISHED.name
     }
@@ -47,7 +59,8 @@ class GameService(
     fun createGame(user: User, gameCreateRequest: GameCreateRequest): Long {
         val game: Game = Game().apply {
             timePerPlayerInSeconds = gameCreateRequest.timePerPlayerInSeconds
-            fen = getDefaultFen()
+            fen = gameEngine.getDefaultFen()
+
             if (gameCreateRequest.isWhitePlayer) {
                 whitePlayer = user
             } else {
@@ -64,11 +77,8 @@ class GameService(
     fun makeMove(user: User, gameMakeMoveRequest: GameMakeMoveRequest): MakeMoveResponse {
         val game = getUserGame(user)
         val pieces = listOf<Piece>()
-        val isCheck = true
-        val whoseTurn = "black"
-        val lastPlayerMove = LocalDateTime.now()
-        val historyOfMoves = ""
-
+        val moves = game.moves.split(",")
+        val whoseTurn = if (moves.size % 2 == 0) "white" else "black"
 
         game.moves = when (game.moves.isBlank()) {
             true -> gameMakeMoveRequest.move
@@ -81,11 +91,11 @@ class GameService(
         }
         val pieceDto = pieces.map { PieceDto.fromDomain(it) }
 
-        return MakeMoveResponse(pieceDto, isCheck, historyOfMoves, GameDto.fromDomain(game))
+        return MakeMoveResponse(pieceDto, GameDto.fromDomain(game), whoseTurn)
     }
 
     @Transactional
-    fun joinGame(user: User, joinGameRequest: JoinGameRequest): MakeMoveResponse {
+    fun joinGame(user: User, joinGameRequest: JoinGameRequest): JoinGameResponse {
         val game = gamesRepository.findById(joinGameRequest.gameId).orElseThrow { RuntimeException("Game not found!") }
 
         if (game.whitePlayer == null) {
@@ -94,22 +104,15 @@ class GameService(
             game.blackPlayer = user
         }
 
-        val pieces = gameEngine.convertFenToPiecesList(getDefaultFen())
-        val piecesWithCorrectMoves = gameEngine.getAllPossibleMovesOfPlayer(pieces, "white")
-
         game.lastMoveWhite = LocalDateTime.now()
         game.gameStatus = GameStatus.IN_PROGRESS.name
 
-        return MakeMoveResponse(piecesWithCorrectMoves, false, "", GameDto.fromDomain(game))
+        return JoinGameResponse(game.id!!)
 
     }
 
     private fun getUserGame(user: User): Game {
         return gamesRepository.findByUserAndStatus(user, GameStatus.IN_PROGRESS.name)
             .orElseThrow { RuntimeException("Game not found!") }
-    }
-
-    private fun getDefaultFen(): String {
-        return "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR"
     }
 }

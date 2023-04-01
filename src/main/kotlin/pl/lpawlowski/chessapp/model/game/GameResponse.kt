@@ -4,7 +4,10 @@ import pl.lpawlowski.chessapp.model.pieces.PieceDto
 
 data class MakeMoveResponse(
     val pieces: List<PieceDto>,
-    val isCheck: Boolean,
-    val historyOfMoves: String,
-    val gameDto: GameDto
+    val gameDto: GameDto,
+    val whoseTurn: String
+)
+
+data class JoinGameResponse(
+    val gameId: Long
 )

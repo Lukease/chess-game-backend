@@ -4,7 +4,7 @@ import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import pl.lpawlowski.chessapp.entities.DrawOffers
 import pl.lpawlowski.chessapp.entities.User
-import pl.lpawlowski.chessapp.exception.DrawOffersNotFoundException
+import pl.lpawlowski.chessapp.exception.NotFound
 import pl.lpawlowski.chessapp.game.DrawOffersStatus
 import pl.lpawlowski.chessapp.game.GameResult
 import pl.lpawlowski.chessapp.game.GameStatus
@@ -45,7 +45,7 @@ class DrawOffersService(
     @Transactional
     fun responseOffer(user: User, gameDrawOfferRequest: GameDrawOfferRequest) {
         val drawOffer = drawOffersRepository.findByUserAndStatus(user, DrawOffersStatus.OFFERED.name)
-            .orElseThrow { DrawOffersNotFoundException("Offer not found!") }
+            .orElseThrow { NotFound("Draw offer not found!") }
 
 
         if (gameDrawOfferRequest.playerResponse) {
@@ -60,7 +60,7 @@ class DrawOffersService(
 
     fun getDrawOffer(user: User): DrawOffersDto{
         val drawOffer = drawOffersRepository.findByUserAndStatus(user, DrawOffersStatus.OFFERED.name)
-            .orElseThrow { DrawOffersNotFoundException("Offer not found!") }
+            .orElseThrow { NotFound("Draw offer not found!") }
 
         return DrawOffersDto.fromDomain(drawOffer)
     }

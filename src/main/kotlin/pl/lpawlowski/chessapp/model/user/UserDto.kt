@@ -6,8 +6,8 @@ import java.time.LocalDateTime
 data class UserDto(
     val id: Long? = null,
     val login: String,
-    val password: String,
-    val email: String,
+    val password: String? = null,
+    val email: String? = null,
     val activeToken: String? = null,
     val validUtil: LocalDateTime? = null
 ) {
@@ -22,5 +22,8 @@ data class UserDto(
                 validUtil = user.validUtil
             )
         }
+
+        fun toGameInfo(user: User) = UserDto(login = user.login)
     }
+
 }

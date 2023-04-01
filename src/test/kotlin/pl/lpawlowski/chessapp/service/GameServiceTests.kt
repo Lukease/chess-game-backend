@@ -15,8 +15,7 @@ import pl.lpawlowski.chessapp.model.user.UserDto
 import pl.lpawlowski.chessapp.repositories.GamesRepository
 import pl.lpawlowski.chessapp.repositories.UsersRepository
 
-@SpringBootTest
-class GameServiceTests {
+class GameServiceTests: BasicIntegrationTest() {
     @Autowired
     lateinit var gameService: GameService
 
@@ -26,12 +25,10 @@ class GameServiceTests {
     @Autowired
     lateinit var userService: UserService
 
-    @Autowired
-    lateinit var userRepository: UsersRepository
-
     @AfterEach
     fun cleanUpDatabase() {
         gamesRepository.deleteAll()
+        userRepository.deleteAll()
     }
 
     @Test
@@ -163,5 +160,81 @@ class GameServiceTests {
         assertThat(games.size).isEqualTo(2)
         assertThat(games[0].gameStatus).isEqualTo(GameStatus.CREATED.name)
         assertThat(games[1].gameStatus).isEqualTo(GameStatus.CREATED.name)
+    }
+
+    @Test
+    fun testResignGame() {
+        val firstUserDto = UserDto(
+            login = "arek",
+            password = "arek12345",
+            email = "arek@onet.pl"
+        )
+
+        val secondUserDto = UserDto(
+            login = "Dawid",
+            password = "Dawid12345",
+            email = "dawid@onet.pl"
+        )
+
+        userService.saveUser(firstUserDto)
+        userService.saveUser(secondUserDto)
+
+        val allUsers = userRepository.findAll()
+        val firstUser = allUsers[0]
+        val secondUser = allUsers[1]
+
+        gameService.createGame(firstUser, GameCreateRequest(true, 800))
+
+        val gameId = gamesRepository.findAll()[0].id
+        val joinGameRequest = JoinGameRequest(gameId!!)
+
+        gameService.joinGame(secondUser, joinGameRequest)
+
+        val gameInProgress = gamesRepository.findAll()[0]
+
+        assertThat(gameInProgress.gameStatus).isEqualTo(GameStatus.IN_PROGRESS.name)
+        gameService.resign(secondUser)
+
+        val gameResign = gamesRepository.findAll()[0]
+
+        assertThat(gameResign.gameStatus).isEqualTo(GameStatus.FINISHED.name)
+    }
+
+    @Test
+    fun testGetActiveGameAndReturnMoves() {
+        val firstUserDto = UserDto(
+            login = "arek",
+            password = "arek12345",
+            email = "arek@onet.pl"
+        )
+
+        val secondUserDto = UserDto(
+            login = "Dawid",
+            password = "Dawid12345",
+            email = "dawid@onet.pl"
+        )
+
+        userService.saveUser(firstUserDto)
+        userService.saveUser(secondUserDto)
+
+        val allUsers = userRepository.findAll()
+        val firstUser = allUsers[0]
+        val secondUser = allUsers[1]
+
+        gameService.createGame(firstUser, GameCreateRequest(true, 800))
+
+        val gameId = gamesRepository.findAll()[0].id
+        val joinGameRequest = JoinGameRequest(gameId!!)
+
+        gameService.joinGame(secondUser, joinGameRequest)
+
+        val gameResponse = gameService.getUserActiveGameAndReturnMoves(secondUser)
+        val secondUserColor = if (gameResponse.gameDto.whitePlayer?.login == secondUser.login) "white" else "black"
+        val piecesColor = gameResponse.pieces[0].color
+
+        assertThat(gameResponse.gameDto.whitePlayer?.login).isEqualTo(firstUser.login)
+        assertThat(gameResponse.gameDto.blackPlayer?.login).isEqualTo(secondUser.login)
+        assertThat(gameResponse.pieces.size).isNotEqualTo(0)
+        assertThat(piecesColor).isEqualTo(secondUserColor)
     }
 }

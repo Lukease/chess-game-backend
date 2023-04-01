@@ -21,6 +21,10 @@ class UserService(
 
     @Transactional
     fun saveUser(userDto: UserDto): Long {
+        if (userDto.email == null || userDto.password == null) {
+            throw WrongCredentialsException("Password or email must not be null!")
+        }
+
         if (usersRepository.existsByLogin(userDto.login)) {
             throw UserExistsException("User " + userDto.login + " exist")
         }
@@ -56,7 +60,7 @@ class UserService(
             user.validUtil = localDateTimePlusHour
             UserDto.fromDomain(user)
         } else {
-            throw WrongCredentialsException("Wrong data!")
+            throw WrongCredentialsException("Incorrect login or password!")
         }
     }
 
@@ -82,9 +86,7 @@ class UserService(
     }
 
     @Transactional
-    fun updateUserPassword(login: String, changePasswordRequest: ChangePasswordRequest): UserDto {
-        val user: User = usersRepository.findByLogin(login).orElseThrow { RuntimeException("User not found!") }
-
+    fun updateUserPassword(user: User, changePasswordRequest: ChangePasswordRequest): UserDto {
         return if (passwordEncoder.matches(changePasswordRequest.oldPassword, user.password)) {
             val encodedPassword = passwordEncoder.encode(changePasswordRequest.password)
 
@@ -92,7 +94,7 @@ class UserService(
 
             UserDto.fromDomain(user)
         } else {
-            throw WrongCredentialsException("Wrong data!")
+            throw WrongCredentialsException("Incorrect old password!")
         }
     }
 
@@ -101,7 +103,8 @@ class UserService(
     }
 
     private fun findUserByLogin(login: String): User {
-        return usersRepository.findByLogin(login).orElseThrow { WrongCredentialsException("Wrong data") }
+        return usersRepository.findByLogin(login)
+            .orElseThrow { WrongCredentialsException("Incorrect login or password") }
     }
 
     fun findUserByAuthorizationToken(activeToken: String): User {

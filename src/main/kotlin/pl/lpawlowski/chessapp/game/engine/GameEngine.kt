@@ -29,6 +29,10 @@ class GameEngine {
 //        val fieldFrom = fieldFrom(field)
     }
 
+    fun getDefaultFen(): String {
+        return "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR"
+    }
+
     fun convertFenToPiecesList(fen: String): List<Piece> {
         val split = fen.split("/")
         val piecesArray = split.flatMapIndexed { row: Int, it: String ->

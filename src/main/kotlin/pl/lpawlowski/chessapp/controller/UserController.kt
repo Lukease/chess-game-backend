@@ -18,33 +18,15 @@ class UserController(
 ) {
 
     @PostMapping
-    fun saveUser(@RequestBody userDto: UserDto): ResponseEntity<*> {
-        return try {
-            ResponseEntity.ok(userService.saveUser(userDto))
-        } catch (e: UserExistsException) {
-            e.printStackTrace()
-            ResponseEntity.status(HttpStatus.CONFLICT).body(e.message)
-        }
-    }
+    fun saveUser(@RequestBody userDto: UserDto) = userService.saveUser(userDto)
 
     @GetMapping
-    fun getUserByLogin(@RequestParam("login") login: String): ResponseEntity<*> {
-        return try {
-            ResponseEntity.ok(userService.getUserByLogin(login))
-        } catch (e: RuntimeException) {
-            ResponseEntity.status(HttpStatus.NOT_FOUND).body("$login not found!")
-        }
-    }
+    fun getUserByLogin(@RequestParam("login") login: String) = userService.getUserByLogin(login)
+
 
     @PostMapping("/log-in")
-    fun logIn(@RequestBody userLogInRequest: UserLogInRequest): ResponseEntity<*> {
-        return try {
-            ResponseEntity.ok(userService.logIn(userLogInRequest))
-        } catch (e: WrongCredentialsException) {
-            e.printStackTrace()
-            ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(e.message)
-        }
-    }
+    fun logIn(@RequestBody userLogInRequest: UserLogInRequest) = userService.logIn(userLogInRequest)
+
 
     @PutMapping("/new-login")
     fun editUserLogin(
@@ -73,7 +55,7 @@ class UserController(
     ): UserDto {
         val user: User = userService.findUserByAuthorizationToken(authorization)
 
-        return userService.updateUserPassword(user.login, changePasswordRequest)
+        return userService.updateUserPassword(user, changePasswordRequest)
     }
 
     @GetMapping("/get-all")

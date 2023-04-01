@@ -4,7 +4,7 @@ import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
 import pl.lpawlowski.chessapp.entities.User
-import pl.lpawlowski.chessapp.exception.GameNotFoundException
+import pl.lpawlowski.chessapp.exception.NotFound
 import pl.lpawlowski.chessapp.model.game.*
 import pl.lpawlowski.chessapp.model.user.*
 import pl.lpawlowski.chessapp.service.GameService
@@ -41,7 +41,7 @@ class GameController(
     fun joinGame(
         @RequestHeader("Authorization") authorization: String,
         @RequestBody joinGameRequest: JoinGameRequest
-    ): MakeMoveResponse {
+    ): JoinGameResponse {
         val user: User = userService.findUserByAuthorizationToken(authorization)
 
         return gameService.joinGame(user, joinGameRequest)
@@ -59,16 +59,19 @@ class GameController(
         return gameService.getUserActiveGame(user)
     }
 
+    @GetMapping("/get-in-progress")
+    fun getUserActiveGameAndReturnMoves(@RequestHeader("Authorization") authorization: String): MakeMoveResponse {
+        val user: User = userService.findUserByAuthorizationToken(authorization)
+
+        return gameService.getUserActiveGameAndReturnMoves(user)
+    }
+
     @PutMapping("/resign")
     fun resign(
         @RequestHeader("Authorization") authorization: String
-    ): ResponseEntity<*> {
+    ) {
         val user: User = userService.findUserByAuthorizationToken(authorization)
 
-        return try {
-            ResponseEntity.ok(gameService.resign(user))
-        } catch (e: GameNotFoundException) {
-            ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.message)
-        }
+        gameService.resign(user)
     }
 }
