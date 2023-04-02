@@ -21,13 +21,14 @@ class DrawOffersService(
     @Transactional
     fun createOffer(user: User): Long? {
         val gameOffer = gamesRepository.findByUserAndStatus(user, GameStatus.IN_PROGRESS.name)
+            .orElseThrow { NotFound("No active game!!") }
 
-        return if (gameOffer.isPresent) {
+        return if (gameOffer != null) {
             val drawOffers: DrawOffers = DrawOffers().apply {
-                game = gameOffer.get()
+                game = gameOffer
                 status = DrawOffersStatus.OFFERED.name
                 playerOffered = user
-                playerResponding = if (game.whitePlayer == user) {
+                playerResponding = if (game.whitePlayer?.login == user.login) {
                     game.blackPlayer!!
                 } else {
                     game.whitePlayer!!
@@ -43,22 +44,24 @@ class DrawOffersService(
     }
 
     @Transactional
-    fun responseOffer(user: User, gameDrawOfferRequest: GameDrawOfferRequest) {
-        val drawOffer = drawOffersRepository.findByUserAndStatus(user, DrawOffersStatus.OFFERED.name)
+    fun responseOffer(user: User, gameDrawOfferRequest: GameDrawOfferRequest): Long {
+        val drawOffer = drawOffersRepository.findById(gameDrawOfferRequest.gameOfferId)
             .orElseThrow { NotFound("Draw offer not found!") }
 
-
-        if (gameDrawOfferRequest.playerResponse) {
-            drawOffer.game.gameStatus = GameStatus.FINISHED.name
-            drawOffer.game.result = GameResult.DRAW.name
-            drawOffer.status = DrawOffersStatus.ACCEPTED.name
-
-        } else {
-            drawOffer.status = DrawOffersStatus.REJECTED.name
+        if (drawOffer.playerResponding.login == user.login) {
+            if (gameDrawOfferRequest.playerResponse) {
+                drawOffer.game.gameStatus = GameStatus.FINISHED.name
+                drawOffer.game.result = GameResult.DRAW.name
+                drawOffer.status = DrawOffersStatus.ACCEPTED.name
+            } else {
+                drawOffer.status = DrawOffersStatus.REJECTED.name
+            }
         }
+
+        return drawOffer.id!!
     }
 
-    fun getDrawOffer(user: User): DrawOffersDto{
+    fun getDrawOffer(user: User): DrawOffersDto {
         val drawOffer = drawOffersRepository.findByUserAndStatus(user, DrawOffersStatus.OFFERED.name)
             .orElseThrow { NotFound("Draw offer not found!") }
 

@@ -17,7 +17,7 @@ import pl.lpawlowski.chessapp.repositories.DrawOffersRepository
 import pl.lpawlowski.chessapp.repositories.GamesRepository
 import pl.lpawlowski.chessapp.repositories.UsersRepository
 
-class DrawOffersTests: BasicIntegrationTest() {
+class DrawOffersTests : BasicIntegrationTest() {
     @Autowired
     lateinit var gameService: GameService
 
@@ -41,114 +41,69 @@ class DrawOffersTests: BasicIntegrationTest() {
 
     @Test
     fun testCreateOffer() {
-        val firstUserDto = UserDto(
-            login = "Adam",
-            password = "Adam12345!",
-            email = "Adam@onet.pl"
-        )
+        val secondUserLogin = "Adam"
 
-        val secondUserDto = UserDto(
-            login = "kuba",
-            password = "kuba12345!",
-            email = "kuba@onet.pl"
-        )
+        insertUser(testUserLogin)
+        insertUser(secondUserLogin)
 
-        userService.saveUser(firstUserDto)
-        userService.saveUser(secondUserDto)
+        val firstUser = userService.findUserByLogin(testUserLogin)
+        val secondUser = userService.findUserByLogin(secondUserLogin)
+        val gameId = gameService.createGame(firstUser, GameCreateRequest(true, 800))
 
-        val allUsers = userRepository.findAll()
-        val firstUser = allUsers[0]
-        val secondUser = allUsers[0]
-
-        gameService.createGame(firstUser, GameCreateRequest(true, 800))
-
-        val game = gamesRepository.findAll()[0]
-
-        gameService.joinGame(secondUser, JoinGameRequest(game.id!!))
+        gameService.joinGame(secondUser, JoinGameRequest(gameId))
         drawOffersService.createOffer(firstUser)
 
-        val drawOffers = drawOffersRepository.findAll()
+        val game = gamesRepository.findById(gameId).get()
 
-        assertThat(drawOffers.size).isEqualTo(1)
+        assertThat(game.drawOffers.size).isEqualTo(1)
     }
 
     @Test
     fun testResponseOffer() {
-        val firstUserDto = UserDto(
-            login = "Andrzej",
-            password = "Andrzej12345!",
-            email = "Andrzej@onet.pl"
-        )
+        val secondUserLogin = "Adam"
 
-        val secondUserDto = UserDto(
-            login = "Damian",
-            password = "Damian12345!",
-            email = "Damian@onet.pl"
-        )
+        insertUser(testUserLogin)
+        insertUser(secondUserLogin)
 
-        userService.saveUser(firstUserDto)
-        userService.saveUser(secondUserDto)
+        val firstUser = userService.findUserByLogin(testUserLogin)
+        val secondUser = userService.findUserByLogin(secondUserLogin)
+        val gameId = gameService.createGame(firstUser, GameCreateRequest(true, 800))
 
-        val allUsers = userRepository.findAll()
-        val firstUser = allUsers[0]
-        val secondUser = allUsers[0]
-
-        gameService.createGame(firstUser, GameCreateRequest(true, 800))
-
-        val game = gamesRepository.findAll()[0]
-
-        gameService.joinGame(secondUser, JoinGameRequest(game.id!!))
+        gameService.joinGame(secondUser, JoinGameRequest(gameId))
         drawOffersService.createOffer(firstUser)
-        drawOffersService.responseOffer(secondUser, GameDrawOfferRequest(game.id!!, false))
 
-        val drawOffers = drawOffersRepository.findAll()
+        val firstDrawId = drawOffersService.responseOffer(secondUser, GameDrawOfferRequest(gameId, false))
+        val firstDrawOffer = drawOffersRepository.findById(firstDrawId).get()
 
-        assertThat(drawOffers[0].game.gameStatus).isEqualTo(GameStatus.IN_PROGRESS.name)
-        assertThat(drawOffers[0].status).isEqualTo(DrawOffersStatus.REJECTED.name)
-
+        assertThat(firstDrawOffer.game.gameStatus).isEqualTo(GameStatus.IN_PROGRESS.name)
+        assertThat(firstDrawOffer.status).isEqualTo(DrawOffersStatus.REJECTED.name)
         drawOffersService.createOffer(firstUser)
-        drawOffersService.responseOffer(secondUser, GameDrawOfferRequest(game.id!!, true))
 
-        val twoDrawOffers = drawOffersRepository.findAll()
+        val secondDrawId = drawOffersService.responseOffer(secondUser, GameDrawOfferRequest(gameId, true))
+        val secondDrawOffer = drawOffersRepository.findById(secondDrawId).get()
 
-        assertThat(twoDrawOffers[1].game.gameStatus).isEqualTo(GameStatus.FINISHED.name)
-        assertThat(twoDrawOffers[1].game.result).isEqualTo(GameResult.DRAW.name)
-        assertThat(twoDrawOffers[1].status).isEqualTo(DrawOffersStatus.ACCEPTED.name)
+        assertThat(secondDrawOffer.game.gameStatus).isEqualTo(GameStatus.FINISHED.name)
+        assertThat(secondDrawOffer.game.result).isEqualTo(GameResult.DRAW.name)
+        assertThat(secondDrawOffer.status).isEqualTo(DrawOffersStatus.ACCEPTED.name)
     }
 
     @Test
     fun getDrawOffer() {
-        val firstUserDto = UserDto(
-            login = "Kamil",
-            password = "Kamil12345!",
-            email = "Kamil@onet.pl"
-        )
+        val secondUserLogin = "Adam"
 
-        val secondUserDto = UserDto(
-            login = "Mateusz",
-            password = "Mateusz12345!",
-            email = "Mateusz@onet.pl"
-        )
+        insertUser(testUserLogin)
+        insertUser(secondUserLogin)
 
-        userService.saveUser(firstUserDto)
-        userService.saveUser(secondUserDto)
+        val firstUser = userService.findUserByLogin(testUserLogin)
+        val secondUser = userService.findUserByLogin(secondUserLogin)
+        val gameId = gameService.createGame(firstUser, GameCreateRequest(true, 800))
 
-        val allUsers = userRepository.findAll()
-        val firstUser = allUsers[0]
-        val secondUser = allUsers[0]
+        gameService.joinGame(secondUser, JoinGameRequest(gameId))
 
-        gameService.createGame(firstUser, GameCreateRequest(true, 800))
-
-        val game = gamesRepository.findAll()[0]
-
-        gameService.joinGame(secondUser, JoinGameRequest(game.id!!))
-        drawOffersService.createOffer(firstUser)
-
-        val allOffer = drawOffersRepository.findAll()
-        val offerDto = DrawOffersDto.fromDomain(allOffer[0])
+        val drawOfferId = drawOffersService.createOffer(firstUser)
         val offer = drawOffersService.getDrawOffer(secondUser)
 
         assertThat(offer.status).isEqualTo(DrawOffersStatus.OFFERED.name)
-        assertThat(offer.id).isEqualTo(offerDto.id)
+        assertThat(offer.id).isEqualTo(drawOfferId)
     }
 }

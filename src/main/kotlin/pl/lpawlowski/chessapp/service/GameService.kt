@@ -42,7 +42,7 @@ class GameService(
         val color = if (user.login == game.whitePlayer?.login) "white" else "black"
         val piecesWithCorrectMoves = gameEngine.getAllPossibleMovesOfPlayer(pieces, color)
         val moves = game.moves.split(",")
-        val whoseTurn = if (moves.size % 2 != 0) "white" else "black"
+        val whoseTurn = if (moves.size % 2 == 0) "white" else "black"
 
         return MakeMoveResponse(piecesWithCorrectMoves, GameDto.fromDomain(game), whoseTurn)
     }

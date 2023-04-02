@@ -9,6 +9,7 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.security.crypto.password.PasswordEncoder
 import pl.lpawlowski.chessapp.entities.User
+import pl.lpawlowski.chessapp.exception.NotFound
 import pl.lpawlowski.chessapp.exception.UserExistsException
 import pl.lpawlowski.chessapp.exception.WrongCredentialsException
 import pl.lpawlowski.chessapp.model.user.ChangePasswordRequest
@@ -16,7 +17,7 @@ import pl.lpawlowski.chessapp.model.user.UserDto
 import pl.lpawlowski.chessapp.model.user.UserLogInRequest
 import pl.lpawlowski.chessapp.repositories.UsersRepository
 
-class UserServiceTests: BasicIntegrationTest() {
+class UserServiceTests : BasicIntegrationTest() {
     @Autowired
     lateinit var userService: UserService
 
@@ -88,100 +89,81 @@ class UserServiceTests: BasicIntegrationTest() {
 
     @Test
     fun testEditUserPassword() {
-        val userLogin = "jan"
         val userDto = UserDto(
-            login = userLogin,
+            login = testUserLogin,
             password = "jan12345",
-            email = "jan@onet.pl"
+            email = testsUserEmail
         )
 
         userService.saveUser(userDto)
 
-        val oldPassword = "jan12345"
-        val newPassword = "123456!A"
-//        val passwordRequest = ChangePasswordRequest(oldPassword, newPassword)
-//        val user = userService.updateUserPassword(userDto.login, passwordRequest)
-//
-//        val user: User = userRepository.findByLogin("jan")
+        val newPassword = "newpassword123"
+        val passwordRequest = ChangePasswordRequest(userDto.password!!, newPassword)
+        val user = userRepository.findAll()
+        val userDtoAfterUpdate = userService.updateUserPassword(user[0], passwordRequest)
 
-//        assert(passwordEncoder.matches(newPassword, user.password))
+        assert(passwordEncoder.matches(newPassword, userDtoAfterUpdate.password))
     }
 
     @Test
     fun testGetUserByLogin() {
-        val firstUserDto = UserDto(
-            login = "jan",
-            password = "jan12345",
-            email = "jan@onet.pl"
-        )
-        val secondUserDto = UserDto(
-            login = "sebastian",
-            password = "sebastian12",
-            email = "sebastian@onet.pl"
-        )
-        val thirdUserDto = UserDto(
-            login = "kuba",
-            password = "kuba12",
-            email = "kuba@onet.pl"
-        )
         val wrongLogin = "Daniel"
+        val secondUserLogin = "sebastian"
+        val thirdUserLogin = "maciej"
 
-        userService.saveUser(firstUserDto)
-        userService.saveUser(secondUserDto)
-        userService.saveUser(thirdUserDto)
+        insertUser(testUserLogin)
+        insertUser(secondUserLogin)
+        insertUser(thirdUserLogin)
 
-        val allUsers = userRepository.findAll()
-        val searchedUser = allUsers[1]
-        val getUserByLoginTest = userService.getUserByLogin(secondUserDto.login)
-
-        assertThat(getUserByLoginTest.login).isEqualTo(searchedUser.login)
+        assertThat(userService.getUserByLogin(secondUserLogin).login).isEqualTo(secondUserLogin)
+        assertThat(userService.getUserByLogin(testUserLogin).login).isEqualTo(testUserLogin)
         assertThrows<RuntimeException> { userService.getUserByLogin(wrongLogin) }
     }
 
     @Test
     fun testLogIn() {
         val userDto = UserDto(
-            login = "jan",
+            login = testUserLogin,
             password = "jan12345",
-            email = "jan@onet.pl"
+            email = testsUserEmail
         )
 
         userService.saveUser(userDto)
 
         val wrongLogin = "krzysztof"
-        val logInRequest = UserLogInRequest(userDto.login, userDto.password!!)
+        val logInRequest = UserLogInRequest(testUserLogin, userDto.password!!)
         val wrongLogInRequest = UserLogInRequest(wrongLogin, userDto.password!!)
 
         assertThrows<WrongCredentialsException> { userService.logIn(wrongLogInRequest) }
-        assertDoesNotThrow { userService.logIn(logInRequest) }
+        assertThat(userService.logIn(logInRequest).email).isEqualTo(testsUserEmail)
     }
 
     @Test
     fun testFindUserByAuthorizationToken() {
+        val secondUserLogin = "sebastian"
         val userDto = UserDto(
-            login = "jan",
+            login = testUserLogin,
             password = "jan12345",
-            email = "jan@onet.pl"
+            email = testsUserEmail
         )
         val secondUserDto = UserDto(
-            login = "sebastian",
+            login = secondUserLogin,
             password = "sebastian12",
             email = "sebastian@onet.pl"
         )
 
         userService.saveUser(userDto)
         userService.saveUser(secondUserDto)
+        insertUser()
+        insertUser()
+        insertUser()
+        userService.logIn(UserLogInRequest(userDto.login, userDto.password!!))
+        userService.logIn(UserLogInRequest(secondUserDto.login, secondUserDto.password!!))
 
-        val logInRequest = UserLogInRequest(userDto.login, userDto.password!!)
-
-        userService.logIn(logInRequest)
-
-        val allUsers = userRepository.findAll()
-        val loggedUser = allUsers[0]
+        val loggedUser = userService.findUserByLogin(testUserLogin)
         val correctToken = loggedUser.activeToken!!
 
         assertDoesNotThrow { userService.findUserByAuthorizationToken(correctToken) }
-        assertThat(loggedUser.activeToken).isNotNull
-        assertThat(loggedUser.validUtil).isNotNull
+        assertThat(userService.findUserByAuthorizationToken(correctToken).login).isEqualTo(testUserLogin)
     }
 }

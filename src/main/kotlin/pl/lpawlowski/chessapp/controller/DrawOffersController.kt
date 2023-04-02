@@ -27,7 +27,7 @@ class DrawOffersController(
     fun responseOffer(
         @RequestHeader("Authorization") authorization: String,
         @RequestBody gameDrawOfferRequest: GameDrawOfferRequest
-    ) {
+    ): Long {
         val user: User = userService.findUserByAuthorizationToken(authorization)
 
         return drawOffersService.responseOffer(user, gameDrawOfferRequest)

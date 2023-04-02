@@ -26,6 +26,6 @@ class Game {
     @JoinColumn(name = "player_black_id")
     var blackPlayer: User? = null
 
-    @OneToMany(mappedBy = "game")
+    @OneToMany(mappedBy = "game", fetch = FetchType.EAGER)
     var drawOffers: List<DrawOffers> = listOf()
 }

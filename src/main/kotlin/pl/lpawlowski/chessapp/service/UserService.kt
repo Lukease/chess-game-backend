@@ -102,7 +102,7 @@ class UserService(
         return usersRepository.findAll().map { UserDto.fromDomain(it) }
     }
 
-    private fun findUserByLogin(login: String): User {
+    fun findUserByLogin(login: String): User {
         return usersRepository.findByLogin(login)
             .orElseThrow { WrongCredentialsException("Incorrect login or password") }
     }
