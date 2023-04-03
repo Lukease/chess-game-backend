@@ -25,7 +25,7 @@ class Pawn(
         return false
     }
 
-    override fun getSpecialMoves(): List<MoveType> {
+    fun getPawnSpecialMoves(): List<MoveType> {
         return listOf(MoveType.EN_PASSANT, MoveType.MOVE_TWO, MoveType.PROM, MoveType.PAWN_CAPTURE)
     }
 

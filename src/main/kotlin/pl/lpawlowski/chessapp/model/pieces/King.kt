@@ -29,7 +29,7 @@ class King(
         return false
     }
 
-    override fun getSpecialMoves(): List<MoveType> {
+     fun getKingSpecialMoves(): List<MoveType> {
         return listOf(MoveType.SMALL_CASTLE, MoveType.BIG_CASTLE)
     }
 
@@ -40,4 +40,5 @@ class King(
     override fun toFenChar(): Char {
         return if (color == "white") 'K' else 'k'
     }
+
 }

@@ -1,5 +1,6 @@
 package pl.lpawlowski.chessapp.model.pieces
 
+import pl.lpawlowski.chessapp.game.engine.MoveType
 import pl.lpawlowski.chessapp.model.chess_possible_move.Vector2d
 import pl.lpawlowski.chessapp.game.engine.MovingStrategies
 
@@ -27,5 +28,9 @@ class Bishop(
 
     override fun toFenChar(): Char {
         return if (color == "white") 'B' else 'b'
+    }
+
+    fun getBishopSpecialMoves(): List<MoveType> {
+        return listOf(MoveType.NORMAL)
     }
 }

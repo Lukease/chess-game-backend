@@ -5,7 +5,8 @@ import pl.lpawlowski.chessapp.model.pieces.PieceDto
 data class MakeMoveResponse(
     val pieces: List<PieceDto>,
     val gameDto: GameDto,
-    val whoseTurn: String
+    val whoseTurn: String,
+    val playerColor: String
 )
 
 data class JoinGameResponse(

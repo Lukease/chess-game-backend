@@ -1,5 +1,6 @@
 package pl.lpawlowski.chessapp.model.pieces
 
+import pl.lpawlowski.chessapp.game.engine.MoveType
 import pl.lpawlowski.chessapp.model.chess_possible_move.Vector2d
 import pl.lpawlowski.chessapp.game.engine.MovingStrategies
 
@@ -26,5 +27,8 @@ class Rook(
 
     override fun toFenChar(): Char {
         return if (color == "white") 'R' else 'r'
+    }
+     fun getRookSpecialMoves(): List<MoveType> {
+        return listOf()
     }
 }

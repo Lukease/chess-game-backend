@@ -41,10 +41,11 @@ class GameService(
         val pieces = gameEngine.convertFenToPiecesList(game.fen)
         val color = if (user.login == game.whitePlayer?.login) "white" else "black"
         val piecesWithCorrectMoves = gameEngine.getAllPossibleMovesOfPlayer(pieces, color)
+        val enemyPieces = gameEngine.getEnemyPieces(pieces, color)
         val moves = game.moves.split(",")
         val whoseTurn = if (moves.size % 2 == 0) "white" else "black"
 
-        return MakeMoveResponse(piecesWithCorrectMoves, GameDto.fromDomain(game), whoseTurn)
+        return MakeMoveResponse(piecesWithCorrectMoves.plus(enemyPieces), GameDto.fromDomain(game), whoseTurn, color)
     }
 
     @Transactional
@@ -79,10 +80,11 @@ class GameService(
         val pieces = listOf<Piece>()
         val moves = game.moves.split(",")
         val whoseTurn = if (moves.size % 2 == 0) "white" else "black"
+        val playerColor = if (user == game.whitePlayer) "white" else "black"
 
         game.moves = when (game.moves.isBlank()) {
-            true -> gameMakeMoveRequest.move
-            false -> "${game.moves},${gameMakeMoveRequest.move}"
+            true -> gameMakeMoveRequest.moveId
+            false -> "${game.moves},${gameMakeMoveRequest.moveId}"
         }
         if (user == game.whitePlayer) {
             game.lastMoveWhite = LocalDateTime.now()
@@ -91,24 +93,27 @@ class GameService(
         }
         val pieceDto = pieces.map { PieceDto.fromDomain(it) }
 
-        return MakeMoveResponse(pieceDto, GameDto.fromDomain(game), whoseTurn)
+        return MakeMoveResponse(pieceDto, GameDto.fromDomain(game), whoseTurn, playerColor)
     }
 
     @Transactional
     fun joinGame(user: User, joinGameRequest: JoinGameRequest): JoinGameResponse {
         val game = gamesRepository.findById(joinGameRequest.gameId).orElseThrow { RuntimeException("Game not found!") }
+        val userActiveGame = gamesRepository.findActiveGamesByUser(user, GameStatus.IN_PROGRESS.name)
+        if (game.whitePlayer?.login != user.login && game.blackPlayer?.login != user.login && !userActiveGame.isPresent) {
+            if (game.whitePlayer == null) {
+                game.whitePlayer = user
+            } else {
+                game.blackPlayer = user
+            }
 
-        if (game.whitePlayer == null) {
-            game.whitePlayer = user
+            game.lastMoveWhite = LocalDateTime.now()
+            game.gameStatus = GameStatus.IN_PROGRESS.name
+
+            return JoinGameResponse(game.id!!)
         } else {
-            game.blackPlayer = user
+            throw RuntimeException("You are already in the game!")
         }
-
-        game.lastMoveWhite = LocalDateTime.now()
-        game.gameStatus = GameStatus.IN_PROGRESS.name
-
-        return JoinGameResponse(game.id!!)
-
     }
 
     private fun getUserGame(user: User): Game {
