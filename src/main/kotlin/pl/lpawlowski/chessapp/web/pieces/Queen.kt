@@ -1,17 +1,16 @@
-package pl.lpawlowski.chessapp.model.pieces
+package pl.lpawlowski.chessapp.web.pieces
 
 import pl.lpawlowski.chessapp.game.engine.MoveType
-import pl.lpawlowski.chessapp.model.chess_possible_move.Vector2d
+import pl.lpawlowski.chessapp.web.chess_possible_move.Vector2d
 import pl.lpawlowski.chessapp.game.engine.MovingStrategies
 
-class Bishop(
+class Queen(
     color: String,
     id: String,
     name: String
-) : Piece(color, id, name, listOf(MovingStrategies.diagonalMoving)) {
-
+) : Piece(color, id, name, listOf(MovingStrategies.diagonalMoving, MovingStrategies.lineMoving)) {
     override fun getAllPossibleDirections(): List<Vector2d> {
-        return MovingStrategies.diagonalMoving.getAllPossibleDirections()
+        return MovingStrategies.diagonalMoving.getAllPossibleDirections() + MovingStrategies.lineMoving.getAllPossibleDirections()
     }
 
     override fun canMoveMultipleSquares(): Boolean {
@@ -19,18 +18,16 @@ class Bishop(
     }
 
     override fun getPieceIcon(): String {
-        return "♗"
+        return "♕"
     }
 
     override fun canGoToTheSameField(): Boolean {
-        return true
+        return false
     }
-
     override fun toFenChar(): Char {
-        return if (color == "white") 'B' else 'b'
+        return if (color == "white") 'Q' else 'q'
     }
-
-    fun getBishopSpecialMoves(): List<MoveType> {
+    override fun getSpecialMoves(): List<MoveType> {
         return listOf(MoveType.NORMAL)
     }
 }

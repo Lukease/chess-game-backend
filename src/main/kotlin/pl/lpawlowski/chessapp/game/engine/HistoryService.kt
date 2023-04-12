@@ -1,8 +1,5 @@
 package pl.lpawlowski.chessapp.game.engine
 
-import pl.lpawlowski.chessapp.model.chess_possible_move.Move
-import pl.lpawlowski.chessapp.model.pieces.Pawn
-
 class HistoryService {
 //    var historyOfMovesBackTo = mutableListOf<PieceMove>()
 //    var arrayOfMoves = mutableListOf<PieceMove>()

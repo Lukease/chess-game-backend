@@ -10,8 +10,11 @@ import pl.lpawlowski.chessapp.game.GameStatus
 import pl.lpawlowski.chessapp.model.game.GameCreateRequest
 import pl.lpawlowski.chessapp.model.game.GameMakeMoveRequest
 import pl.lpawlowski.chessapp.model.game.JoinGameRequest
+import pl.lpawlowski.chessapp.model.game.PieceDto
 import pl.lpawlowski.chessapp.model.user.UserDto
 import pl.lpawlowski.chessapp.repositories.GamesRepository
+import pl.lpawlowski.chessapp.web.pieces.Pawn
+import pl.lpawlowski.chessapp.web.pieces.Piece
 
 class GameServiceTests : BasicIntegrationTest() {
     @Autowired
@@ -73,10 +76,11 @@ class GameServiceTests : BasicIntegrationTest() {
         val allUsersAfterJoining = userRepository.findAll()
         val joiningUser = allUsersAfterJoining[1]
         val correctGameId: Long = createdGame.id!!
-        val moves = "A4"
+        val movedPiece = PieceDto("white", "A4", "Pawn")
+        val moves = GameMakeMoveRequest("A5", movedPiece, "")
 
         gameService.joinGame(joiningUser, JoinGameRequest(correctGameId))
-        gameService.makeMove(whitePlayer, GameMakeMoveRequest(moves))
+        gameService.makeMove(whitePlayer, moves)
 
         val gameInProgress = gamesRepository.findAll()[0]
 

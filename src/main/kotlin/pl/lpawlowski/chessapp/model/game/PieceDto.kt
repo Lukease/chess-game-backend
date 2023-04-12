@@ -1,13 +1,13 @@
-package pl.lpawlowski.chessapp.model.pieces
+package pl.lpawlowski.chessapp.model.game
 
-import pl.lpawlowski.chessapp.model.chess_possible_move.SpecialMove
+import pl.lpawlowski.chessapp.web.pieces.Piece
+import pl.lpawlowski.chessapp.web.chess_possible_move.SpecialMove
 
 class PieceDto(
     val color: String,
     val id: String,
     val name: String,
-    var possibleMoves: List<String> = mutableListOf(),
-    val specialMoves: List<SpecialMove> = mutableListOf()
+    var possibleMoves: List<SpecialMove> = mutableListOf(),
 ) {
     companion object {
         fun fromDomain(piece: Piece): PieceDto {
@@ -16,7 +16,6 @@ class PieceDto(
                 name = piece.name,
                 color = piece.color,
                 possibleMoves = piece.possibleMoves,
-                specialMoves = piece.specialMoves
             )
         }
     }

@@ -1,20 +1,19 @@
-package pl.lpawlowski.chessapp.model.pieces
+package pl.lpawlowski.chessapp.web.pieces
 
 
-import pl.lpawlowski.chessapp.model.chess_possible_move.Coordinate
-import pl.lpawlowski.chessapp.model.chess_possible_move.Vector2d
-import pl.lpawlowski.chessapp.model.chess_possible_move.moving_startegy.MovingStrategy
+import pl.lpawlowski.chessapp.web.chess_possible_move.Coordinate
+import pl.lpawlowski.chessapp.web.chess_possible_move.Vector2d
+import pl.lpawlowski.chessapp.web.chess_possible_move.moving_startegy.MovingStrategy
 import pl.lpawlowski.chessapp.game.engine.CoordinateService
 import pl.lpawlowski.chessapp.game.engine.MoveType
-import pl.lpawlowski.chessapp.model.chess_possible_move.SpecialMove
+import pl.lpawlowski.chessapp.web.chess_possible_move.SpecialMove
 
 abstract class Piece(
     val color: String,
-    val id: String,
+    var id: String,
     val name: String,
     val movingStrategies: List<MovingStrategy>,
-    var possibleMoves: List<String> = mutableListOf(),
-    var specialMoves: List<SpecialMove> = mutableListOf()
+    var possibleMoves: List<SpecialMove> = mutableListOf(),
 ) {
     private var currentCoordinate: Coordinate = CoordinateService.getCoordinateById(id)
     private val startingCoordinate: Coordinate = currentCoordinate
@@ -36,8 +35,6 @@ abstract class Piece(
         return startingCoordinate == currentCoordinate
     }
 
-//    abstract fun getSpecialMoves(): List<MoveType>
-
     fun setHasMoved(): Boolean {
         return (hasMoved).also { hasMoved = true }
     }
@@ -54,5 +51,6 @@ abstract class Piece(
         return false
     }
 
+    abstract fun getSpecialMoves(): List<MoveType>
     abstract fun toFenChar(): Char
 }

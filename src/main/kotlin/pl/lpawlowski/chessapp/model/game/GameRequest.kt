@@ -1,7 +1,5 @@
 package pl.lpawlowski.chessapp.model.game
 
-import pl.lpawlowski.chessapp.model.pieces.PieceDto
-
 data class GameCreateRequest(
     val isWhitePlayer: Boolean,
     val timePerPlayerInSeconds: Int
@@ -9,7 +7,8 @@ data class GameCreateRequest(
 
 data class GameMakeMoveRequest(
     val moveId: String,
-    val piece: PieceDto
+    val piece: PieceDto,
+    val moveName: String
 )
 
 data class JoinGameRequest(

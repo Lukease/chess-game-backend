@@ -1,4 +1,4 @@
-package pl.lpawlowski.chessapp.model.chess_possible_move
+package pl.lpawlowski.chessapp.web.chess_possible_move
 
 class MoveHistory(
     val currentName: String,

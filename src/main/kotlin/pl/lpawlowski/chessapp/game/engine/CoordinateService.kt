@@ -1,6 +1,6 @@
 package pl.lpawlowski.chessapp.game.engine
 
-import pl.lpawlowski.chessapp.model.chess_possible_move.Coordinate
+import pl.lpawlowski.chessapp.web.chess_possible_move.Coordinate
 
 class CoordinateService {
     companion object {

@@ -7,9 +7,9 @@ import pl.lpawlowski.chessapp.entities.User
 import pl.lpawlowski.chessapp.exception.NotFound
 import pl.lpawlowski.chessapp.game.GameStatus
 import pl.lpawlowski.chessapp.model.game.*
-import pl.lpawlowski.chessapp.model.pieces.*
 import pl.lpawlowski.chessapp.repositories.GamesRepository
 import pl.lpawlowski.chessapp.game.engine.GameEngine
+import pl.lpawlowski.chessapp.model.game.PieceDto
 import java.time.LocalDateTime
 
 @Service
@@ -39,13 +39,22 @@ class GameService(
     fun getUserActiveGameAndReturnMoves(user: User): MakeMoveResponse {
         val game = getUserGame(user)
         val pieces = gameEngine.convertFenToPiecesList(game.fen)
-        val color = if (user.login == game.whitePlayer?.login) "white" else "black"
-        val piecesWithCorrectMoves = gameEngine.getAllPossibleMovesOfPlayer(pieces, color)
-        val enemyPieces = gameEngine.getEnemyPieces(pieces, color)
         val moves = game.moves.split(",")
-        val whoseTurn = if (moves.size % 2 == 0) "white" else "black"
+        val whoseTurn = if (moves.size % 2 != 0) "white" else "black"
+        val color = if (user.login == game.whitePlayer?.login) "white" else "black"
 
-        return MakeMoveResponse(piecesWithCorrectMoves.plus(enemyPieces), GameDto.fromDomain(game), whoseTurn, color)
+        val piecesWithCorrectMoves = if (whoseTurn == color) {
+            val playerPieceDto = gameEngine.getAllPossibleMovesOfPlayer(pieces, color)
+            val enemyPieces = gameEngine.getEnemyPieces(pieces, color)
+
+            playerPieceDto.plus(enemyPieces)
+        } else {
+            pieces.map { PieceDto.fromDomain(it) }
+        }
+
+        val kingIsChecked = gameEngine.getTheKingIsChecked(color, pieces)
+
+        return MakeMoveResponse(piecesWithCorrectMoves, GameDto.fromDomain(game), whoseTurn, color, kingIsChecked)
     }
 
     @Transactional
@@ -77,10 +86,25 @@ class GameService(
     @Transactional
     fun makeMove(user: User, gameMakeMoveRequest: GameMakeMoveRequest): MakeMoveResponse {
         val game = getUserGame(user)
-        val pieces = listOf<Piece>()
+        val pieces = gameEngine.convertFenToPiecesList(game.fen)
         val moves = game.moves.split(",")
-        val whoseTurn = if (moves.size % 2 == 0) "white" else "black"
+        val whoseTurn = if (moves.size % 2 != 0) "white" else "black"
         val playerColor = if (user == game.whitePlayer) "white" else "black"
+        val removePieceToIfExist = pieces.filter { it.id != gameMakeMoveRequest.moveId }.map { piece ->
+            if (gameMakeMoveRequest.piece.id == piece.id) {
+                if (gameMakeMoveRequest.moveName == "") {
+                    piece.id = gameMakeMoveRequest.moveId
+
+                    piece
+                } else {
+                    piece
+                }
+            } else {
+                piece
+            }
+        }
+
+        game.fen = gameEngine.convertPieceListToFen(removePieceToIfExist)
 
         game.moves = when (game.moves.isBlank()) {
             true -> gameMakeMoveRequest.moveId
@@ -91,15 +115,16 @@ class GameService(
         } else {
             game.lastMoveBlack = LocalDateTime.now()
         }
-        val pieceDto = pieces.map { PieceDto.fromDomain(it) }
+        val pieceDto = removePieceToIfExist.map { PieceDto.fromDomain(it) }
+        val kingIsChecked = gameEngine.getTheKingIsChecked(playerColor, pieces)
 
-        return MakeMoveResponse(pieceDto, GameDto.fromDomain(game), whoseTurn, playerColor)
+        return MakeMoveResponse(pieceDto, GameDto.fromDomain(game), whoseTurn, playerColor, kingIsChecked)
     }
 
     @Transactional
     fun joinGame(user: User, joinGameRequest: JoinGameRequest): JoinGameResponse {
         val game = gamesRepository.findById(joinGameRequest.gameId).orElseThrow { RuntimeException("Game not found!") }
-        val userActiveGame = gamesRepository.findActiveGamesByUser(user, GameStatus.IN_PROGRESS.name)
+        val userActiveGame = gamesRepository.findByUserAndStatus(user, GameStatus.IN_PROGRESS.name)
         if (game.whitePlayer?.login != user.login && game.blackPlayer?.login != user.login && !userActiveGame.isPresent) {
             if (game.whitePlayer == null) {
                 game.whitePlayer = user

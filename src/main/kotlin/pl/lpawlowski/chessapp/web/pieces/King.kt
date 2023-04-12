@@ -1,6 +1,6 @@
-package pl.lpawlowski.chessapp.model.pieces
+package pl.lpawlowski.chessapp.web.pieces
 
-import pl.lpawlowski.chessapp.model.chess_possible_move.Vector2d
+import pl.lpawlowski.chessapp.web.chess_possible_move.Vector2d
 import pl.lpawlowski.chessapp.game.engine.MoveType
 import pl.lpawlowski.chessapp.game.engine.MovingStrategies
 
@@ -29,7 +29,7 @@ class King(
         return false
     }
 
-     fun getKingSpecialMoves(): List<MoveType> {
+    override fun getSpecialMoves(): List<MoveType> {
         return listOf(MoveType.SMALL_CASTLE, MoveType.BIG_CASTLE)
     }
 
