@@ -11,6 +11,7 @@ import pl.lpawlowski.chessapp.repositories.GamesRepository
 import pl.lpawlowski.chessapp.game.engine.GameEngine
 import pl.lpawlowski.chessapp.model.game.PieceDto
 import pl.lpawlowski.chessapp.model.history.PlayerMove
+import pl.lpawlowski.chessapp.web.chess_possible_move.Move
 import pl.lpawlowski.chessapp.web.pieces.Piece
 import java.time.LocalDateTime
 
@@ -84,36 +85,17 @@ class GameService(
         val moves = game.moves.split(",")
         val whoseTurn = if (moves.size % 2 != 0) "white" else "black"
         val playerColor = if (user == game.whitePlayer) "white" else "black"
-        val pieceCaptured = pieces.find { it.id == gameMakeMoveRequest.fieldToId }
-        val pieceFrom = pieces.find { it.id == gameMakeMoveRequest.pieceFrom }
-        val promotedPiece = pieces.find { it.id == gameMakeMoveRequest.pieceFrom }
         val piecesWithCorrectMoves = getPieceDtoWithCorrectMovesOfPlayer(playerColor, pieces)
-        val removePieceToIfExist = pieces.filter { it != pieceCaptured }.map { piece ->
-            if (pieceFrom == piece) {
-                if (!gameMakeMoveRequest.specialMove) {
-                    piece.id = gameMakeMoveRequest.fieldToId
 
-                    piece
-                } else {
-                    piece
-                }
-            } else {
-                piece
-            }
-        }
-
-        val nameOfMove = playerMove.getNameOfMoveAndReturnPieceArray(
+        val move: Move = playerMove.getNameOfMoveAndReturnPieceArray(
             playerColor,
             piecesWithCorrectMoves,
-            pieceFrom!!,
-            pieceCaptured,
-            gameMakeMoveRequest.fieldToId,
-            promotedPiece, game
+            gameMakeMoveRequest,pieces
         )
 
-        game.fen = gameEngine.convertPieceListToFen(removePieceToIfExist)
+        game.fen = gameEngine.convertPieceListToFen(pieces)
 
-        val pieceDto = removePieceToIfExist.map { PieceDto.fromDomain(it) }
+        val pieceDto = pieces.map { PieceDto.fromDomain(it) }
         val kingIsChecked = gameEngine.getTheKingIsChecked(playerColor, pieces)
         game.moves = when (game.moves.isBlank()) {
             true -> gameMakeMoveRequest.fieldToId
