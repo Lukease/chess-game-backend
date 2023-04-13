@@ -29,9 +29,6 @@ class GameEngine {
                     val column: String = numberToChar(number).toString()
                     val color = if (char.isUpperCase()) "white" else "black"
                     val id: String = column + (8 - row)
-                    if (column[0] !in 'A'..'H') {
-                        println(column)
-                    }
                     when (char.lowercaseChar()) {
                         'b' -> Bishop(color, id, "Bishop")
                         'k' -> King(color, id, "King")
@@ -74,14 +71,14 @@ class GameEngine {
         return fen.joinToString("/")
     }
 
-    fun addKingIsCheckedAndChangeNameOfMove(move: PlayerMove, color: String, piecesArray: List<Piece>): PlayerMove? {
-        if (getTheKingIsChecked(color, piecesArray)) {
-            move.isCheck = true
-            move.nameOfMove += "+"
-            return move
-        }
-        return null
-    }
+//    fun addKingIsCheckedAndChangeNameOfMove(move: PlayerMove, color: String, piecesArray: List<Piece>): PlayerMove? {
+//        if (getTheKingIsChecked(color, piecesArray)) {
+//
+//            move.nameOfMove += "+"
+//            return move
+//        }
+//        return null
+//    }
 
     fun getTheKingIsChecked(color: String, piecesArray: List<Piece>): Boolean {
         val king = piecesArray.find { it.color == color && it is King }
@@ -132,7 +129,7 @@ class GameEngine {
             } else {
                 correctId
             }
-            val possibleNormalMoves = pieceMoves.map { SpecialMove(MoveType.NORMAL.name, it) }
+            val possibleNormalMoves = pieceMoves.map { SpecialMove(MoveType.NORMAL, it) }
 
             piece.possibleMoves = possibleNormalMoves
             getSpecialMovesForPiece(piece, allPieces)
@@ -238,7 +235,7 @@ class GameEngine {
                 val smallCastle = getFieldForCastle(pieceFrom, true, piecesArray)
 
                 return if (smallCastle != null) {
-                    pieceFrom.possibleMoves += SpecialMove(MoveType.SMALL_CASTLE.name, smallCastle)
+                    pieceFrom.possibleMoves += SpecialMove(MoveType.SMALL_CASTLE, smallCastle)
 
                     pieceFrom
                 } else {
@@ -250,7 +247,7 @@ class GameEngine {
                 val bigCastle = getFieldForCastle(pieceFrom, false, piecesArray)
 
                 return if (bigCastle != null) {
-                    pieceFrom.possibleMoves += SpecialMove(MoveType.SMALL_CASTLE.name, bigCastle)
+                    pieceFrom.possibleMoves += SpecialMove(MoveType.SMALL_CASTLE, bigCastle)
 
                     pieceFrom
                 } else {
@@ -273,7 +270,7 @@ class GameEngine {
                 val moveTwo = isMoveTwoPossible(pieceFrom, piecesArray)
 
                 return if (moveTwo != null) {
-                    pieceFrom.possibleMoves += SpecialMove(MoveType.MOVE_TWO.name, moveTwo)
+                    pieceFrom.possibleMoves += SpecialMove(MoveType.MOVE_TWO, moveTwo)
                     pieceFrom
                 } else {
                     pieceFrom
@@ -283,7 +280,7 @@ class GameEngine {
             MoveType.PAWN_CAPTURE -> {
                 val pawnCapture = isPawnCapturePossible(pieceFrom, piecesArray)
 
-                pawnCapture.forEach { pieceFrom.possibleMoves += SpecialMove(MoveType.PAWN_CAPTURE.name, it) }
+                pawnCapture.forEach { pieceFrom.possibleMoves += SpecialMove(MoveType.PAWN_CAPTURE, it) }
                 pieceFrom
 
             }

@@ -6,16 +6,13 @@ data class GameCreateRequest(
 )
 
 data class GameMakeMoveRequest(
-    val moveId: String,
-    val piece: PieceDto,
-    val moveName: String
+    val specialMove: Boolean,
+    val pieceFrom: String,
+    val fieldToId: String,
+    val promotedPiece: PieceDto?
 )
 
 data class JoinGameRequest(
-    val gameId: Long
-)
-
-data class LeaveGameRequest(
     val gameId: Long
 )
 

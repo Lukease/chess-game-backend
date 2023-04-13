@@ -5,7 +5,7 @@ import pl.lpawlowski.chessapp.web.chess_possible_move.SpecialMove
 
 class PieceDto(
     val color: String,
-    val id: String,
+    var id: String,
     val name: String,
     var possibleMoves: List<SpecialMove> = mutableListOf(),
 ) {

@@ -10,12 +10,15 @@ import pl.lpawlowski.chessapp.model.game.*
 import pl.lpawlowski.chessapp.repositories.GamesRepository
 import pl.lpawlowski.chessapp.game.engine.GameEngine
 import pl.lpawlowski.chessapp.model.game.PieceDto
+import pl.lpawlowski.chessapp.model.history.PlayerMove
+import pl.lpawlowski.chessapp.web.pieces.Piece
 import java.time.LocalDateTime
 
 @Service
 class GameService(
     private val gamesRepository: GamesRepository,
-    private val gameEngine: GameEngine
+    private val gameEngine: GameEngine,
+    private val playerMove: PlayerMove,
 ) {
     @Transactional
     fun getAllCreatedGames(): List<GameDto> {
@@ -41,20 +44,11 @@ class GameService(
         val pieces = gameEngine.convertFenToPiecesList(game.fen)
         val moves = game.moves.split(",")
         val whoseTurn = if (moves.size % 2 != 0) "white" else "black"
-        val color = if (user.login == game.whitePlayer?.login) "white" else "black"
+        val playerColor = if (user.login == game.whitePlayer?.login) "white" else "black"
+        val piecesWithCorrectMoves = getPieceDtoWithCorrectMovesOfPlayer(playerColor, pieces)
+        val kingIsChecked = gameEngine.getTheKingIsChecked(playerColor, pieces)
 
-        val piecesWithCorrectMoves = if (whoseTurn == color) {
-            val playerPieceDto = gameEngine.getAllPossibleMovesOfPlayer(pieces, color)
-            val enemyPieces = gameEngine.getEnemyPieces(pieces, color)
-
-            playerPieceDto.plus(enemyPieces)
-        } else {
-            pieces.map { PieceDto.fromDomain(it) }
-        }
-
-        val kingIsChecked = gameEngine.getTheKingIsChecked(color, pieces)
-
-        return MakeMoveResponse(piecesWithCorrectMoves, GameDto.fromDomain(game), whoseTurn, color, kingIsChecked)
+        return MakeMoveResponse(piecesWithCorrectMoves, GameDto.fromDomain(game), whoseTurn, playerColor, kingIsChecked)
     }
 
     @Transactional
@@ -90,10 +84,14 @@ class GameService(
         val moves = game.moves.split(",")
         val whoseTurn = if (moves.size % 2 != 0) "white" else "black"
         val playerColor = if (user == game.whitePlayer) "white" else "black"
-        val removePieceToIfExist = pieces.filter { it.id != gameMakeMoveRequest.moveId }.map { piece ->
-            if (gameMakeMoveRequest.piece.id == piece.id) {
-                if (gameMakeMoveRequest.moveName == "") {
-                    piece.id = gameMakeMoveRequest.moveId
+        val pieceCaptured = pieces.find { it.id == gameMakeMoveRequest.fieldToId }
+        val pieceFrom = pieces.find { it.id == gameMakeMoveRequest.pieceFrom }
+        val promotedPiece = pieces.find { it.id == gameMakeMoveRequest.pieceFrom }
+        val piecesWithCorrectMoves = getPieceDtoWithCorrectMovesOfPlayer(playerColor, pieces)
+        val removePieceToIfExist = pieces.filter { it != pieceCaptured }.map { piece ->
+            if (pieceFrom == piece) {
+                if (!gameMakeMoveRequest.specialMove) {
+                    piece.id = gameMakeMoveRequest.fieldToId
 
                     piece
                 } else {
@@ -104,19 +102,28 @@ class GameService(
             }
         }
 
+        val nameOfMove = playerMove.getNameOfMoveAndReturnPieceArray(
+            playerColor,
+            piecesWithCorrectMoves,
+            pieceFrom!!,
+            pieceCaptured,
+            gameMakeMoveRequest.fieldToId,
+            promotedPiece, game
+        )
+
         game.fen = gameEngine.convertPieceListToFen(removePieceToIfExist)
 
+        val pieceDto = removePieceToIfExist.map { PieceDto.fromDomain(it) }
+        val kingIsChecked = gameEngine.getTheKingIsChecked(playerColor, pieces)
         game.moves = when (game.moves.isBlank()) {
-            true -> gameMakeMoveRequest.moveId
-            false -> "${game.moves},${gameMakeMoveRequest.moveId}"
+            true -> gameMakeMoveRequest.fieldToId
+            false -> "${game.moves},${gameMakeMoveRequest.fieldToId}"
         }
         if (user == game.whitePlayer) {
             game.lastMoveWhite = LocalDateTime.now()
         } else {
             game.lastMoveBlack = LocalDateTime.now()
         }
-        val pieceDto = removePieceToIfExist.map { PieceDto.fromDomain(it) }
-        val kingIsChecked = gameEngine.getTheKingIsChecked(playerColor, pieces)
 
         return MakeMoveResponse(pieceDto, GameDto.fromDomain(game), whoseTurn, playerColor, kingIsChecked)
     }
@@ -144,5 +151,12 @@ class GameService(
     private fun getUserGame(user: User): Game {
         return gamesRepository.findByUserAndStatus(user, GameStatus.IN_PROGRESS.name)
             .orElseThrow { RuntimeException("Game not found!") }
+    }
+
+    private fun getPieceDtoWithCorrectMovesOfPlayer(playerColor: String, pieces: List<Piece>): List<PieceDto> {
+        val playerPieceDto = gameEngine.getAllPossibleMovesOfPlayer(pieces, playerColor)
+        val enemyPieces = gameEngine.getEnemyPieces(pieces, playerColor)
+
+        return playerPieceDto.plus(enemyPieces)
     }
 }
