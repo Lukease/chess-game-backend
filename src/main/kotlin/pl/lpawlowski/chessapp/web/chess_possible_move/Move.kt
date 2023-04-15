@@ -1,8 +1,10 @@
 package pl.lpawlowski.chessapp.web.chess_possible_move
 
-import pl.lpawlowski.chessapp.model.game.PieceDto
+import pl.lpawlowski.chessapp.game.engine.MoveType
+import pl.lpawlowski.chessapp.web.pieces.Piece
 
 open class Move (
      val nameOfMove: String,
-     val pieces: List<PieceDto>
+     val pieces: List<Piece>,
+     val moveType: MoveType
 )

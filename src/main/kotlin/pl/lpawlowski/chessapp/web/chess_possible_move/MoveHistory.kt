@@ -8,4 +8,4 @@ class MoveHistory(
     val idInArray: Int,
     isCheck: Boolean,
     val specialMove: String,
-) : Move(isCheck, currentId)
+)

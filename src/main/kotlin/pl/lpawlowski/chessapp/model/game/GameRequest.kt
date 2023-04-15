@@ -6,7 +6,6 @@ data class GameCreateRequest(
 )
 
 data class GameMakeMoveRequest(
-    val specialMove: Boolean,
     val pieceFrom: String,
     val fieldToId: String,
     val promotedPiece: PieceDto?
