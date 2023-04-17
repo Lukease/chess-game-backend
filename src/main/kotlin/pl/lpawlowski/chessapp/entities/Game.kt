@@ -1,7 +1,6 @@
 package pl.lpawlowski.chessapp.entities
 
 import pl.lpawlowski.chessapp.game.GameStatus
-import pl.lpawlowski.chessapp.web.chess_possible_move.SpecialMove
 import java.time.LocalDateTime
 import javax.persistence.*
 

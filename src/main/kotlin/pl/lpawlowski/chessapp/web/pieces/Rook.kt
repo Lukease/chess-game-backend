@@ -1,13 +1,15 @@
 package pl.lpawlowski.chessapp.web.pieces
 
+import pl.lpawlowski.chessapp.constants.PiecesNames
+import pl.lpawlowski.chessapp.constants.PlayerColor
 import pl.lpawlowski.chessapp.game.engine.MoveType
 import pl.lpawlowski.chessapp.web.chess_possible_move.Vector2d
 import pl.lpawlowski.chessapp.game.engine.MovingStrategies
 
 class Rook(
-    color: String,
+    color: PlayerColor,
     id: String,
-    name: String
+    name: PiecesNames
 ) : Piece(color, id, name, listOf(MovingStrategies.lineMoving)) {
     override fun getAllPossibleDirections(): List<Vector2d> {
         return MovingStrategies.lineMoving.getAllPossibleDirections()
@@ -26,7 +28,7 @@ class Rook(
     }
 
     override fun toFenChar(): Char {
-        return if (color == "white") 'R' else 'r'
+        return if (color == PlayerColor.WHITE) 'R' else 'r'
     }
     override fun getSpecialMoves(): List<MoveType> {
         return listOf()

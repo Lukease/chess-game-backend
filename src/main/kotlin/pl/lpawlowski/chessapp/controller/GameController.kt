@@ -1,11 +1,10 @@
 package pl.lpawlowski.chessapp.controller
 
-import org.springframework.http.HttpStatus
-import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
 import pl.lpawlowski.chessapp.entities.User
-import pl.lpawlowski.chessapp.exception.NotFound
 import pl.lpawlowski.chessapp.model.game.*
+import pl.lpawlowski.chessapp.model.offers.DrawOffersDto
+import pl.lpawlowski.chessapp.model.offers.GameDrawOfferRequest
 import pl.lpawlowski.chessapp.model.user.*
 import pl.lpawlowski.chessapp.service.GameService
 import pl.lpawlowski.chessapp.service.UserService
@@ -21,20 +20,15 @@ class GameController(
     fun newGame(
         @RequestHeader("Authorization") authorization: String,
         @RequestBody gameCreateRequest: GameCreateRequest
-    ): Long {
+    ): GameDto {
         val user: User = userService.findUserByAuthorizationToken(authorization)
 
-        return gameService.createGame(user, gameCreateRequest)
+        return GameDto.fromDomain(gameService.createGame(user, gameCreateRequest))
     }
 
-    @PostMapping("/make-move")
-    fun makeMove(
-        @RequestHeader("Authorization") authorization: String,
-        @RequestBody gameMakeMoveRequest: GameMakeMoveRequest
-    ): MakeMoveResponse {
-        val user: User = userService.findUserByAuthorizationToken(authorization)
-
-        return gameService.makeMove(user, gameMakeMoveRequest)
+    @GetMapping("/get-all")
+    fun getAllCreatedGames(): List<GameDto> {
+        return gameService.getAllCreatedGames().map { GameDto.fromDomain(it) }
     }
 
     @PostMapping("/join-game")
@@ -47,17 +41,23 @@ class GameController(
         return gameService.joinGame(user, joinGameRequest)
     }
 
-    @GetMapping("/get-all")
-    fun getAllCreatedGames(): List<GameDto> {
-        return gameService.getAllCreatedGames()
-    }
-
     @GetMapping("/get-active")
     fun getUserActiveGame(@RequestHeader("Authorization") authorization: String): GameDto? {
         val user: User = userService.findUserByAuthorizationToken(authorization)
 
-        return gameService.getUserActiveGame(user)
+        return gameService.getUserActiveGame(user)?.let { GameDto.fromDomain(it) }
     }
+
+    @PostMapping("/make-move")
+    fun makeMove(
+        @RequestHeader("Authorization") authorization: String,
+        @RequestBody gameMakeMoveRequest: GameMakeMoveRequest
+    ): MakeMoveResponse {
+        val user: User = userService.findUserByAuthorizationToken(authorization)
+
+        return gameService.makeMove(user, gameMakeMoveRequest)
+    }
+
 
     @GetMapping("/get-in-progress")
     fun getUserActiveGameAndReturnMoves(@RequestHeader("Authorization") authorization: String): MakeMoveResponse {
@@ -69,9 +69,35 @@ class GameController(
     @PutMapping("/resign")
     fun resign(
         @RequestHeader("Authorization") authorization: String
-    ) {
+    ): GameDto {
         val user: User = userService.findUserByAuthorizationToken(authorization)
 
-        gameService.resign(user)
+        return GameDto.fromDomain(gameService.resign(user))
+    }
+
+    @PostMapping("/draw-offers")
+    fun newOffer(
+        @RequestHeader("Authorization") authorization: String
+    ): Long? {
+        val user: User = userService.findUserByAuthorizationToken(authorization)
+
+        return gameService.createOffer(user)
+    }
+
+    @PutMapping("/draw-offers/response")
+    fun responseOffer(
+        @RequestHeader("Authorization") authorization: String,
+        @RequestBody gameDrawOfferRequest: GameDrawOfferRequest
+    ): Long {
+        val user: User = userService.findUserByAuthorizationToken(authorization)
+
+        return gameService.responseOffer(user, gameDrawOfferRequest)
+    }
+
+    @GetMapping("/draw-offers")
+    fun getDrawOffer(@RequestHeader("Authorization") authorization: String): DrawOffersDto {
+        val user: User = userService.findUserByAuthorizationToken(authorization)
+
+        return DrawOffersDto.fromDomain(gameService.getDrawOffer(user))
     }
 }

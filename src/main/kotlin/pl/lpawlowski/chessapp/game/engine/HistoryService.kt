@@ -113,7 +113,7 @@ class HistoryService {
 //
 //    fun createPawnForAdditionalField(move: Move): Pawn{
 //        val coordinate = move.additionalField!!.coordinate
-//        val color = if (move.fieldTo.piece?.color == "white") "balck" else "white"
+//        val color = if (move.fieldTo.piece?.color == PlayerColor.WHITE) "balck" else PlayerColor.WHITE
 //
 //        return Pawn(color.coordinate.boardColumn + coordinate.boardRow, "Pawn")
 //    }

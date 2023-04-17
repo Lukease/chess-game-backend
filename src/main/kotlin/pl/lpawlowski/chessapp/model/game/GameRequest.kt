@@ -6,9 +6,9 @@ data class GameCreateRequest(
 )
 
 data class GameMakeMoveRequest(
-    val pieceFrom: String,
+    val pieceFromId: String,
     val fieldToId: String,
-    val promotedPiece: PieceDto?
+    val promotedPieceName: String?
 )
 
 data class JoinGameRequest(

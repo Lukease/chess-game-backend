@@ -16,6 +16,8 @@ class ExceptionControllerAdvice {
             is NotFound -> HttpStatus.NOT_FOUND
             is UserExistsException -> HttpStatus.CONFLICT
             is WrongCredentialsException -> HttpStatus.BAD_REQUEST
+            is PieceNotFound -> HttpStatus.BAD_REQUEST
+            is ForbiddenUser -> HttpStatus.FORBIDDEN
             else -> HttpStatus.INTERNAL_SERVER_ERROR
         }
 
