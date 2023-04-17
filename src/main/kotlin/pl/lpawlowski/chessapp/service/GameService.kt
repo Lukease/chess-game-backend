@@ -140,7 +140,7 @@ class GameService(
         val piecesWithCorrectMoves =
             if (playerColor == whoseTurn) getPieceWithCorrectMovesOfPlayer(playerColor, pieces, game.moves) else pieces
         val kingIsChecked = gameEngine.getTheKingIsChecked(playerColor, pieces, game.moves)
-
+            //todo king is checked add possible moves need to remove it
         return MakeMoveResponse(
             piecesWithCorrectMoves.map { PieceDto.fromDomain(it) },
             GameDto.fromDomain(game),

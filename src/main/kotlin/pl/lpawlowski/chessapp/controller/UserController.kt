@@ -29,7 +29,7 @@ class UserController(
     @GetMapping
     fun getUserByLogin(@RequestParam("login") login: String): ResponseEntity<*> {
         return try {
-            ResponseEntity.ok(userService.getUserByLogin(login))
+            ResponseEntity.ok(UserDto.fromDomain(userService.getUserByLogin(login)))
         } catch (e: RuntimeException) {
             ResponseEntity.status(HttpStatus.NOT_FOUND).body("$login not found!")
         }
@@ -38,7 +38,7 @@ class UserController(
     @PostMapping("/log-in")
     fun logIn(@RequestBody userLogInRequest: UserLogInRequest): ResponseEntity<*> {
         return try {
-            ResponseEntity.ok(userService.logIn(userLogInRequest))
+            ResponseEntity.ok(UserDto.fromDomain(userService.logIn(userLogInRequest)))
         } catch (e: WrongCredentialsException) {
             e.printStackTrace()
             ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(e.message)

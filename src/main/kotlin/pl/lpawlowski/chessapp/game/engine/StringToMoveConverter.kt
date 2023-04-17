@@ -117,7 +117,7 @@ class StringToMoveConverter {
     ): Move {
         val fieldsOldNumber = if (moveType == MoveType.SMALL_CASTLE) 1 else -2
         val fieldsNewNumber = if (moveType == MoveType.SMALL_CASTLE) -1 else 1
-        val kingVector = convertIdToVector(pieceFrom.id)
+        val kingVector = convertIdToVector(fieldTo)
         val oldRookFieldId = "${numberToChar(kingVector.x + fieldsOldNumber)}${kingVector.y}"
         val newRookFieldId = "${numberToChar(kingVector.x + fieldsNewNumber)}${kingVector.y}"
         val piecesAfterMove = allPieces.map { piece ->

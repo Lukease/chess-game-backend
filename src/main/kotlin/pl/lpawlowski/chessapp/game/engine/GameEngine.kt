@@ -201,11 +201,26 @@ class GameEngine(
         allPieces: List<Piece>
     ): List<PossibleMove> {
         val vector = convertIdToVector(currentPiece.id)
-        return generateSequence(1) { it + 1 }
-            .map { getFieldByXY(vector.x + direction.x * it, vector.y + direction.y * it) }
-            .takeWhile { it != null && canMoveToField(it, currentPiece, allPieces) }
-            .map { PossibleMove(MoveType.NORMAL, it!!) }
-            .toList()
+        val fields = mutableListOf<PossibleMove>()
+        if (currentPiece.name.name == PiecesNames.KNIGHT.name){
+            println()
+        }
+        var counter = 1
+        var field = getFieldByXY(vector.x + direction.x * counter, vector.y + direction.y * counter)
+        while (field != null) {
+            val piece = getPieceById(field, allPieces)
+            if (piece == null || piece.color != currentPiece.color) {
+                fields.add(PossibleMove(MoveType.NORMAL, field))
+                if (piece != null) {
+                    break
+                }
+            } else {
+                break
+            }
+            counter++
+            field = getFieldByXY(vector.x + direction.x * counter, vector.y + direction.y * counter)
+        }
+        return fields
     }
 
     fun getSmallCastleIfPossible(pieceFrom: Piece, piecesArray: List<Piece>): PossibleMove? {
@@ -241,8 +256,7 @@ class GameEngine(
 
     fun getMoveTwoIfPossible(pieceFrom: Piece, piecesArray: List<Piece>): PossibleMove? {
         val moveTwo = isMoveTwoPossible(pieceFrom, piecesArray)
-
-        return if (moveTwo != null) {
+        return if (moveTwo != null && (pieceFrom.id[1] == '2' || pieceFrom.id[1] == '7')) {
             PossibleMove(MoveType.MOVE_TWO, moveTwo)
         } else {
             null
@@ -370,6 +384,9 @@ class GameEngine(
 
 
     fun getFieldByXY(x: Int, y: Int): String? {
+        if (y < 1 || y > 8) {
+            return null
+        }
         val column = numberToChar(x)
         val row = y.toString()
 
