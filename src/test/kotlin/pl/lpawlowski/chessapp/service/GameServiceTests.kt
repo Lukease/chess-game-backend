@@ -62,7 +62,7 @@ class GameServiceTests : BasicIntegrationTest() {
             password = "Jarek1235!",
             email = "Jarek@onet.pl"
         )
-
+//todo make test
         userService.saveUser(userDto)
 
         val allUsers = userRepository.findAll()
@@ -168,7 +168,7 @@ class GameServiceTests : BasicIntegrationTest() {
 
         insertUser(testUserLogin)
         insertUser(secondTestLogin)
-
+//todo make test
         val whitePlayer = userService.findUserByLogin(testUserLogin)
         val blackPlayer = userService.findUserByLogin(secondTestLogin)
         val gameId = gameService.createGame(whitePlayer, GameCreateRequest(true, 800)).id!!

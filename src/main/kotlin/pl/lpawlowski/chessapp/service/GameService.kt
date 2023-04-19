@@ -140,7 +140,7 @@ class GameService(
         val piecesWithCorrectMoves =
             if (playerColor == whoseTurn) getPieceWithCorrectMovesOfPlayer(playerColor, pieces, game.moves) else pieces
         val kingIsChecked = gameEngine.getTheKingIsChecked(playerColor, pieces, game.moves)
-            //todo king is checked add possible moves need to remove it
+        //todo king is checked add possible moves need to remove it
         return MakeMoveResponse(
             piecesWithCorrectMoves.map { PieceDto.fromDomain(it) },
             GameDto.fromDomain(game),
@@ -209,10 +209,10 @@ class GameService(
         }
     }
 
-    fun getDrawOffer(user: User): DrawOffers {
-        return drawOffersRepository.findByUserAndStatus(user, DrawOffersStatus.OFFERED.name)
+    fun getDrawOffer(user: User): DrawOffers =
+        drawOffersRepository.findByUserAndStatus(user, DrawOffersStatus.OFFERED.name)
             .orElseThrow { NotFound("Draw offer not found!") }
-    }
+
 
     private fun getUserGame(user: User): Game {
         return gamesRepository.findByUserAndStatus(user, GameStatus.IN_PROGRESS.name)

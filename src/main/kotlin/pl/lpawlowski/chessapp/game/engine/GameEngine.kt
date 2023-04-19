@@ -3,7 +3,7 @@ package pl.lpawlowski.chessapp.game.engine
 import org.springframework.stereotype.Service
 import pl.lpawlowski.chessapp.constants.PiecesNames
 import pl.lpawlowski.chessapp.constants.PlayerColor
-import pl.lpawlowski.chessapp.exception.PieceNotFound
+import pl.lpawlowski.chessapp.exception.WrongMove
 import pl.lpawlowski.chessapp.model.game.PieceDto
 import pl.lpawlowski.chessapp.web.chess_possible_move.Move
 import pl.lpawlowski.chessapp.web.chess_possible_move.PossibleMove
@@ -14,9 +14,8 @@ import pl.lpawlowski.chessapp.web.pieces.*
 class GameEngine(
     private val stringToMoveConverter: StringToMoveConverter,
 ) {
-    fun getDefaultFen(): String {
-        return "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR"
-    }
+    fun getDefaultFen(): String = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR"
+
 
     fun convertFenToPiecesList(fen: String): List<Piece> {
         val split = fen.split("/")
@@ -41,7 +40,7 @@ class GameEngine(
                         'p' -> Pawn(color, id, PiecesNames.PAWN)
                         'q' -> Queen(color, id, PiecesNames.QUEEN)
                         'r' -> Rook(color, id, PiecesNames.ROOK)
-                        else -> throw PieceNotFound("Piece with char: ${char.lowercaseChar()} not found")
+                        else -> throw WrongMove("Piece with char: ${char.lowercaseChar()} not found")
                     }
                 }
             }
@@ -78,9 +77,8 @@ class GameEngine(
 
     fun convertStringToMove(
         pieceFrom: String, pieceToId: String, promotedPiece: String?, pieces: List<Piece>
-    ): Move {
-        return stringToMoveConverter.createMove(pieceFrom, pieceToId, promotedPiece, pieces)
-    }
+    ): Move = stringToMoveConverter.createMove(pieceFrom, pieceToId, promotedPiece, pieces)
+
 
     fun getTheKingIsChecked(color: PlayerColor, piecesArray: List<Piece>, moves: String): Boolean {
         val king = piecesArray.find { it.color == color && it is King }
@@ -103,21 +101,16 @@ class GameEngine(
         return null
     }
 
-    private fun checkKingPositionIsChecked(allPossibleMovesOfEnemy: List<Piece>, king: Piece): Boolean {
-        return allPossibleMovesOfEnemy.find { piece ->
-            piece.possibleMoves.any { it.fieldId == king.id }
-        } != null
-    }
+    private fun checkKingPositionIsChecked(allPossibleMovesOfEnemy: List<Piece>, king: Piece): Boolean =
+        allPossibleMovesOfEnemy.find { piece -> piece.possibleMoves.any { it.fieldId == king.id } } != null
 
 
     fun calculateAndReturnAllPossibleMovesOfPlayer(
         piecesArray: List<Piece>,
         color: PlayerColor,
         moves: String
-    ): List<Piece> {
-        return piecesArray.filter { it.color == color }
-            .map { setAllPossibleMovesForPieceAndReturnPiece(it, piecesArray, moves) }
-    }
+    ): List<Piece> = piecesArray.filter { it.color == color }
+        .map { setAllPossibleMovesForPieceAndReturnPiece(it, piecesArray, moves) }
 
     fun getEnemyPieces(piecesArray: List<Piece>, color: PlayerColor) = piecesArray.filter { it.color != color }
 
@@ -139,7 +132,13 @@ class GameEngine(
                         getEnPassantIfPossible(piece, allPieces, moves),
                         getMoveTwoIfPossible(piece, allPieces),
                         getPossibleMoveOfPawnOneForward(piece, allPieces)
-                    ).plus(isPawnCapturePossible(piece, allPieces))
+                    ).plus(isPawnCapturePossible(piece, allPieces)).map { correctMove ->
+                        if ((correctMove.fieldId[1] == '8' && piece.color == PlayerColor.WHITE) || (correctMove.fieldId[1] == '1' && piece.color == PlayerColor.BLACK)) {
+                            PossibleMove(MoveType.PROM, correctMove.fieldId)
+                        } else {
+                            correctMove
+                        }
+                    }
                 }
 
                 else -> {
@@ -202,7 +201,7 @@ class GameEngine(
     ): List<PossibleMove> {
         val vector = convertIdToVector(currentPiece.id)
         val fields = mutableListOf<PossibleMove>()
-        if (currentPiece.name.name == PiecesNames.KNIGHT.name){
+        if (currentPiece.name.name == PiecesNames.KNIGHT.name) {
             println()
         }
         var counter = 1
@@ -256,7 +255,9 @@ class GameEngine(
 
     fun getMoveTwoIfPossible(pieceFrom: Piece, piecesArray: List<Piece>): PossibleMove? {
         val moveTwo = isMoveTwoPossible(pieceFrom, piecesArray)
-        return if (moveTwo != null && (pieceFrom.id[1] == '2' || pieceFrom.id[1] == '7')) {
+        val conditionForWhitePawn = pieceFrom.color == PlayerColor.WHITE && pieceFrom.id[1] == '2'
+        val conditionForBlackPawn = pieceFrom.color == PlayerColor.BLACK && pieceFrom.id[1] == '2'
+        return if (moveTwo != null && (conditionForWhitePawn || conditionForBlackPawn)) {
             PossibleMove(MoveType.MOVE_TWO, moveTwo)
         } else {
             null
@@ -393,9 +394,7 @@ class GameEngine(
         return generateFields().find { field -> field[0] == column && field[1] == row[0] }
     }
 
-    private fun getFieldByID(id: String): String? {
-        return generateFields().find { field -> field == id }
-    }
+    private fun getFieldByID(id: String): String? = generateFields().find { field -> field == id }
 
     private fun convertIdToVector(id: String): Vector2d {
         val x = charToNumber(id[0])
@@ -418,17 +417,9 @@ class GameEngine(
         return result
     }
 
-    fun charToNumber(column: Char): Int {
-        return column.code - 64
-    }
-
-    fun numberToChar(column: Int): Char {
-        return (column + 64).toChar()
-    }
-
-    fun getPieceById(id: String, allPieces: List<Piece>): Piece? {
-        return allPieces.find { it.id == id }
-    }
+    fun charToNumber(column: Char): Int = column.code - 64
+    fun numberToChar(column: Int): Char = (column + 64).toChar()
+    fun getPieceById(id: String, allPieces: List<Piece>): Piece? = allPieces.find { it.id == id }
 
 //    fun dontCauseCheck(allPieces: List<PieceDto>, color: PlayerColor, piecesArray: List<Piece>): List<PieceDto> {
 //        val enemyColor = if (color == PlayerColor.WHITE) PlayerColor.BLACK else PlayerColor.WHITE

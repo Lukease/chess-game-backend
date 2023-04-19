@@ -3,7 +3,7 @@ package pl.lpawlowski.chessapp.game.engine
 import org.springframework.stereotype.Component
 import pl.lpawlowski.chessapp.constants.PiecesNames
 import pl.lpawlowski.chessapp.constants.PlayerColor
-import pl.lpawlowski.chessapp.exception.PieceNotFound
+import pl.lpawlowski.chessapp.exception.WrongMove
 import pl.lpawlowski.chessapp.web.chess_possible_move.Move
 import pl.lpawlowski.chessapp.web.chess_possible_move.Vector2d
 import pl.lpawlowski.chessapp.web.pieces.*
@@ -13,12 +13,10 @@ class StringToMoveConverter {
     fun createMove(
         pieceFromId: String, fieldToId: String, promotedPieceName: String?, pieces: List<Piece>,
     ): Move {
-        //todo sprawdzac findy wszystkie
-        val piece = pieces.find { it.id == pieceFromId } ?: throw PieceNotFound("Piece at id:${pieceFromId} not found")
-        val move = piece.possibleMoves.find { it.fieldId == fieldToId } ?: throw PieceNotFound("Piece at id:${pieceFromId} not found")
+        val piece = pieces.find { it.id == pieceFromId } ?: throw WrongMove("Piece at id:${pieceFromId} not found")
+        val move = piece.possibleMoves.find { it.fieldId == fieldToId }
+            ?: throw WrongMove("Possible move to id:${pieceFromId} not found")
         val pieceCaptured = pieces.find { it.id == fieldToId }
-        //todo gameMakeMoveRequest.pieceFrom redukowac
-        //todo  throw RuntimeException() stworzyc swoj excepition ruch nieprawidałow
         val capture = pieceCaptured?.let { "x" } ?: ""
 
         return when (move.moveType) {
@@ -82,7 +80,7 @@ class StringToMoveConverter {
             "Pawn" -> Pawn(color, id, PiecesNames.PAWN)
             "Queen" -> Queen(color, id, PiecesNames.QUEEN)
             "Rook" -> Rook(color, id, PiecesNames.ROOK)
-            else -> throw PieceNotFound("Invalid piece name: $name")
+            else -> throw WrongMove("Invalid piece name: $name")
         }
     }
 
@@ -117,6 +115,7 @@ class StringToMoveConverter {
     ): Move {
         val fieldsOldNumber = if (moveType == MoveType.SMALL_CASTLE) 1 else -2
         val fieldsNewNumber = if (moveType == MoveType.SMALL_CASTLE) -1 else 1
+        val fieldFromId = pieceFrom.id
         val kingVector = convertIdToVector(fieldTo)
         val oldRookFieldId = "${numberToChar(kingVector.x + fieldsOldNumber)}${kingVector.y}"
         val newRookFieldId = "${numberToChar(kingVector.x + fieldsNewNumber)}${kingVector.y}"
@@ -131,9 +130,9 @@ class StringToMoveConverter {
                 piece
             }
         }
-        val moveName = moveType.name
+        val moveName = moveType.historyNotation
 
-        return Move(moveName, piecesAfterMove, moveType, pieceFrom.id, fieldTo, "")
+        return Move(moveName, piecesAfterMove, moveType, fieldFromId, fieldTo, "")
     }
 
     private fun makeMoveTwo(
@@ -141,6 +140,7 @@ class StringToMoveConverter {
         pieceFrom: Piece,
         fieldTo: String,
     ): Move {
+        val fieldFromId = pieceFrom.id
         val piecesAfterMove = allPieces.map { piece ->
             if (pieceFrom.id == piece.id) {
                 piece.id = fieldTo
@@ -152,7 +152,7 @@ class StringToMoveConverter {
         }
         val moveName = fieldTo.lowercase()
 
-        return Move(moveName, piecesAfterMove, MoveType.MOVE_TWO, pieceFrom.id, fieldTo, "")
+        return Move(moveName, piecesAfterMove, MoveType.MOVE_TWO, fieldFromId, fieldTo, "")
     }
 
     private fun makePromotionMove(
@@ -164,7 +164,7 @@ class StringToMoveConverter {
     ): Move {
         val piecesAfterMove = allPieces.filter { it.id != pieceFrom.id && it.id != fieldTo }
         val promotedPiece = createPiece(promotedPieceName, pieceFrom.color, fieldTo)
-        val moveName = pieceFrom.id[0].lowercase().plus(captured).plus(fieldTo.lowercase()).plus("=")
+        val moveName = captured.plus(fieldTo.lowercase()).plus("=")
             .plus(promotedPiece.getPieceIcon())
 
         return Move(
@@ -184,6 +184,7 @@ class StringToMoveConverter {
         fieldTo: String,
         capture: String
     ): Move {
+        val fieldFromId = pieceFrom.id
         if (pieceCaptured != null) {
             allPieces.filter { it.id != pieceCaptured.id }
         }
@@ -198,7 +199,7 @@ class StringToMoveConverter {
         }
         val moveName = pieceFrom.getPieceIcon().plus(capture).plus(fieldTo.lowercase())
 
-        return Move(moveName, piecesAfterMove, MoveType.NORMAL, pieceFrom.id, fieldTo, "")
+        return Move(moveName, piecesAfterMove, MoveType.NORMAL, fieldFromId, fieldTo, "")
     }
 
     fun convertIdToVector(id: String): Vector2d {
@@ -208,11 +209,6 @@ class StringToMoveConverter {
         return Vector2d(x, y)
     }
 
-    fun charToNumber(column: Char): Int {
-        return column.code - 64
-    }
-
-    fun numberToChar(column: Int): Char {
-        return (column + 64).toChar()
-    }
+    fun charToNumber(column: Char): Int = column.code - 64
+    fun numberToChar(column: Int): Char = (column + 64).toChar()
 }
