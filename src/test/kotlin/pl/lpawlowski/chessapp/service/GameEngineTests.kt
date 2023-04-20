@@ -2,11 +2,14 @@ package pl.lpawlowski.chessapp.service
 
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 import org.springframework.beans.factory.annotation.Autowired
 import pl.lpawlowski.chessapp.constants.PiecesNames
 import pl.lpawlowski.chessapp.constants.PlayerColor
+import pl.lpawlowski.chessapp.exception.WrongMove
 import pl.lpawlowski.chessapp.game.engine.GameEngine
 import pl.lpawlowski.chessapp.game.engine.MoveType
 import pl.lpawlowski.chessapp.repositories.DrawOffersRepository
@@ -93,7 +96,12 @@ class GameEngineTests : BasicIntegrationTest() {
         )
         val piecesWithCorrectMoves =
             gameEngine.calculateAndReturnAllPossibleMovesOfPlayer(testsPiecesList, PlayerColor.WHITE, "")
-        val move = gameEngine.convertStringToMove(kingId, fieldToId, null, piecesWithCorrectMoves.plus(gameEngine.getEnemyPieces(testsPiecesList, playerColor)))
+        val move = gameEngine.convertStringToMove(
+            kingId,
+            fieldToId,
+            null,
+            piecesWithCorrectMoves.plus(gameEngine.getEnemyPieces(testsPiecesList, playerColor))
+        )
 
         assertThat(move.moveType).isEqualTo(MoveType.SMALL_CASTLE)
         assertThat(move.nameOfMove).isEqualTo(MoveType.SMALL_CASTLE.historyNotation)
@@ -120,7 +128,12 @@ class GameEngineTests : BasicIntegrationTest() {
         )
         val piecesWithCorrectMoves =
             gameEngine.calculateAndReturnAllPossibleMovesOfPlayer(testsPiecesList, PlayerColor.WHITE, "")
-        val move = gameEngine.convertStringToMove(kingId, fieldToId, null, piecesWithCorrectMoves.plus(gameEngine.getEnemyPieces(testsPiecesList, playerColor)))
+        val move = gameEngine.convertStringToMove(
+            kingId,
+            fieldToId,
+            null,
+            piecesWithCorrectMoves.plus(gameEngine.getEnemyPieces(testsPiecesList, playerColor))
+        )
 
         assertThat(move.moveType).isEqualTo(MoveType.BIG_CASTLE)
         assertThat(move.nameOfMove).isEqualTo(MoveType.BIG_CASTLE.historyNotation)
@@ -147,7 +160,12 @@ class GameEngineTests : BasicIntegrationTest() {
         )
         val piecesWithCorrectMoves =
             gameEngine.calculateAndReturnAllPossibleMovesOfPlayer(testsPiecesList, PlayerColor.WHITE, "")
-        val move = gameEngine.convertStringToMove(pawnId, fieldToId, null, piecesWithCorrectMoves.plus(gameEngine.getEnemyPieces(testsPiecesList, playerColor)))
+        val move = gameEngine.convertStringToMove(
+            pawnId,
+            fieldToId,
+            null,
+            piecesWithCorrectMoves.plus(gameEngine.getEnemyPieces(testsPiecesList, playerColor))
+        )
 
         assertThat(move.moveType).isEqualTo(MoveType.MOVE_TWO)
         assertThat(move.nameOfMove).isEqualTo("e4")
@@ -175,7 +193,12 @@ class GameEngineTests : BasicIntegrationTest() {
         )
         val piecesWithCorrectMoves =
             gameEngine.calculateAndReturnAllPossibleMovesOfPlayer(testsPiecesList, PlayerColor.WHITE, "")
-        val move = gameEngine.convertStringToMove(pawnId, fieldToId, promotedPieceName, piecesWithCorrectMoves.plus(gameEngine.getEnemyPieces(testsPiecesList, playerColor)))
+        val move = gameEngine.convertStringToMove(
+            pawnId,
+            fieldToId,
+            promotedPieceName,
+            piecesWithCorrectMoves.plus(gameEngine.getEnemyPieces(testsPiecesList, playerColor))
+        )
 
         assertThat(move.moveType).isEqualTo(MoveType.PROM)
         assertThat(move.nameOfMove).isEqualTo("e8=♕")
@@ -216,6 +239,7 @@ class GameEngineTests : BasicIntegrationTest() {
         assertThat(move.fieldTo).isEqualTo(fieldToId)
         assertThat(move.fieldFrom).isEqualTo(pawnId)
     }
+
     @Test
     fun testNormalMove() {
         val playerColor = PlayerColor.WHITE
@@ -249,4 +273,107 @@ class GameEngineTests : BasicIntegrationTest() {
         assertThat(move.fieldFrom).isEqualTo(queenId)
     }
 
+    @Test
+    fun testWrongMove() {
+        val playerColor = PlayerColor.WHITE
+        val queenId = "D1"
+        val wrongFieldId = "A0"
+        val testsPiecesList = listOf(
+            Bishop(PlayerColor.WHITE, "B2", PiecesNames.BISHOP),
+            King(PlayerColor.WHITE, "E1", PiecesNames.KING),
+            Knight(PlayerColor.WHITE, "C3", PiecesNames.KNIGHT),
+            Queen(PlayerColor.WHITE, queenId, PiecesNames.QUEEN),
+            Rook(PlayerColor.WHITE, "H1", PiecesNames.ROOK),
+            Rook(PlayerColor.WHITE, "A1", PiecesNames.ROOK),
+            Rook(PlayerColor.BLACK, "A7", PiecesNames.ROOK),
+            Pawn(PlayerColor.WHITE, "A3", PiecesNames.PAWN),
+            King(PlayerColor.BLACK, "A8", PiecesNames.KING),
+            Rook(PlayerColor.WHITE, "H8", PiecesNames.ROOK)
+        )
+        val piecesWithCorrectMoves =
+            gameEngine.calculateAndReturnAllPossibleMovesOfPlayer(testsPiecesList, playerColor, "")
+        assertThrows<WrongMove> {
+            gameEngine.convertStringToMove(
+                queenId,
+                wrongFieldId,
+                null,
+                piecesWithCorrectMoves.plus(gameEngine.getEnemyPieces(testsPiecesList, playerColor))
+            )
+        }
+    }
+
+    @Test
+    fun testKingIsChecked() {
+        val playerColor = PlayerColor.BLACK
+        val enemyColor = PlayerColor.WHITE
+        val testsPiecesList = listOf(
+            Bishop(PlayerColor.WHITE, "B2", PiecesNames.BISHOP),
+            King(PlayerColor.WHITE, "E1", PiecesNames.KING),
+            Knight(PlayerColor.WHITE, "C3", PiecesNames.KNIGHT),
+            Queen(PlayerColor.WHITE, "D4", PiecesNames.QUEEN),
+            Rook(PlayerColor.WHITE, "H1", PiecesNames.ROOK),
+            Rook(PlayerColor.WHITE, "A1", PiecesNames.ROOK),
+            Rook(PlayerColor.BLACK, "A7", PiecesNames.ROOK),
+            Pawn(PlayerColor.WHITE, "A3", PiecesNames.PAWN),
+            King(PlayerColor.BLACK, "A8", PiecesNames.KING),
+            Rook(PlayerColor.WHITE, "H8", PiecesNames.ROOK)
+        )
+        val isPlayerKingChecked = gameEngine.getTheKingIsChecked(playerColor, testsPiecesList, "")
+        val isEnemyKingChecked = gameEngine.getTheKingIsChecked(enemyColor, testsPiecesList, "")
+
+        assertTrue(isPlayerKingChecked)
+        assertFalse(isEnemyKingChecked)
+    }
+
+    @Test
+    fun testDontCauseCheck() {
+        val playerColor = PlayerColor.BLACK
+        val testsPiecesList = listOf(
+            Bishop(PlayerColor.WHITE, "B2", PiecesNames.BISHOP),
+            King(PlayerColor.WHITE, "E1", PiecesNames.KING),
+            Knight(PlayerColor.WHITE, "C3", PiecesNames.KNIGHT),
+            Queen(PlayerColor.WHITE, "E5", PiecesNames.QUEEN),
+            Rook(PlayerColor.WHITE, "H1", PiecesNames.ROOK),
+            Rook(PlayerColor.WHITE, "A1", PiecesNames.ROOK),
+            Rook(PlayerColor.BLACK, "A7", PiecesNames.ROOK),
+            Pawn(PlayerColor.WHITE, "B3", PiecesNames.PAWN),
+            King(PlayerColor.BLACK, "A8", PiecesNames.KING),
+        )
+        val piecesWithCorrectMoves =
+            gameEngine.calculateAndReturnAllPossibleMovesOfPlayer(testsPiecesList, playerColor, "")
+                .plus(gameEngine.getEnemyPieces(testsPiecesList, playerColor))
+        val dontCauseCheck = gameEngine.checkPieceIsCoveringKing(piecesWithCorrectMoves, playerColor)
+        val filteredRookMoves = dontCauseCheck.find { it.name == PiecesNames.ROOK && it.id == "A7" }!!.possibleMoves
+
+        assertThat(filteredRookMoves.size).isEqualTo(6)
+        assertTrue(filteredRookMoves.any { it.fieldId == "A6" })
+        assertTrue(filteredRookMoves.any { it.fieldId == "A5" })
+        assertTrue(filteredRookMoves.any { it.fieldId == "A4" })
+        assertTrue(filteredRookMoves.any { it.fieldId == "A3" })
+        assertTrue(filteredRookMoves.any { it.fieldId == "A2" })
+        assertTrue(filteredRookMoves.any { it.fieldId == "A1" })
+        assertFalse(filteredRookMoves.any { it.fieldId == "B7" })
+    }
+
+    @Test
+    fun testKingCorrectMoves() {
+        val playerColor = PlayerColor.BLACK
+        val testsPiecesList = listOf(
+            Bishop(PlayerColor.WHITE, "B2", PiecesNames.BISHOP),
+            King(PlayerColor.WHITE, "E1", PiecesNames.KING),
+            Knight(PlayerColor.WHITE, "A1", PiecesNames.KNIGHT),
+            Queen(PlayerColor.WHITE, "E5", PiecesNames.QUEEN),
+            Rook(PlayerColor.WHITE, "H7", PiecesNames.ROOK),
+            Rook(PlayerColor.WHITE, "C1", PiecesNames.ROOK),
+            Rook(PlayerColor.BLACK, "A7", PiecesNames.ROOK),
+            Pawn(PlayerColor.WHITE, "B3", PiecesNames.PAWN),
+            King(PlayerColor.BLACK, "D8", PiecesNames.KING),
+        )
+        val piecesWithCorrectMoves =
+            gameEngine.calculateAndReturnAllPossibleMovesOfPlayer(testsPiecesList, playerColor, "")
+                .plus(gameEngine.getEnemyPieces(testsPiecesList, playerColor))
+        val blackKingMoves = gameEngine.dontCauseCheck(piecesWithCorrectMoves, playerColor).find { it.name == PiecesNames.KING && it.id == "D8" }!!.possibleMoves
+
+        assertThat(blackKingMoves.size).isEqualTo(0)
+    }
 }
