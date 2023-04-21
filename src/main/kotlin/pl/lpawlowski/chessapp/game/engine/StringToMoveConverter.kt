@@ -15,7 +15,7 @@ class StringToMoveConverter {
     ): Move {
         val piece = pieces.find { it.id == pieceFromId } ?: throw WrongMove("Piece at id:${pieceFromId} not found")
         val move = piece.possibleMoves.find { it.fieldId == fieldToId }
-            ?: throw WrongMove("Possible move to id:${pieceFromId} not found")
+            ?: throw WrongMove("Possible move to id:${fieldToId} not found")
         val pieceCaptured = pieces.find { it.id == fieldToId }
         val capture = pieceCaptured?.let { "x" } ?: ""
 

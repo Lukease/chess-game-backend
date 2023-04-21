@@ -100,7 +100,8 @@ class GameService(
                 game.fen = gameEngine.convertPieceListToFen(move.pieces)
 
                 val pieceDto = move.pieces.map { PieceDto.fromDomain(it) }
-                val kingIsChecked = gameEngine.getTheKingIsChecked(playerColor, pieces, game.moves)
+                val enemyPieces = gameEngine.calculateAndReturnCaptureMoveOfEnemy(pieces, playerColor)
+                val kingIsChecked = gameEngine.getTheKingIsChecked(playerColor, pieces, enemyPieces, game.moves)
                 val isCheck = if (kingIsChecked) "+" else ""
                 game.moves = when (game.moves.isBlank()) {
                     true -> move.nameOfMove.plus(isCheck)
@@ -109,6 +110,20 @@ class GameService(
                 when (user) {
                     game.whitePlayer -> game.lastMoveWhite = LocalDateTime.now()
                     else -> game.lastMoveBlack = LocalDateTime.now()
+                }
+
+                val playerHaveMove = checkPlayerHavePossibleMoves(piecesWithCorrectMoves, playerColor)
+                when {
+                    playerHaveMove && kingIsChecked -> {
+                        game.gameStatus = GameStatus.FINISHED.name
+                        game.result =
+                            if (playerColor == PlayerColor.WHITE) GameResult.BLACK.name else GameResult.WHITE.name
+                    }
+
+                    playerHaveMove -> {
+                        game.gameStatus = GameStatus.FINISHED.name
+                        game.result = GameResult.DRAW.name
+                    }
                 }
 
                 return MakeMoveResponse(
@@ -139,7 +154,8 @@ class GameService(
         }
         val piecesWithCorrectMoves =
             if (playerColor == whoseTurn) getPieceWithCorrectMovesOfPlayer(playerColor, pieces, game.moves) else pieces
-        val kingIsChecked = gameEngine.getTheKingIsChecked(playerColor, pieces, game.moves)
+        val enemyPieces = gameEngine.calculateAndReturnCaptureMoveOfEnemy(pieces, playerColor)
+        val kingIsChecked = gameEngine.getTheKingIsChecked(playerColor, pieces, enemyPieces, game.moves)
         //todo king is checked add possible moves need to remove it
         return MakeMoveResponse(
             piecesWithCorrectMoves.map { PieceDto.fromDomain(it) },
@@ -224,9 +240,19 @@ class GameService(
         pieces: List<Piece>,
         moves: String
     ): List<Piece> {
-        val playerPiecesWithMoves = gameEngine.calculateAndReturnAllPossibleMovesOfPlayer(pieces, playerColor, moves)
-        val enemyPieces = gameEngine.getEnemyPieces(pieces, playerColor)
+        val enemyPieces = gameEngine.calculateAndReturnCaptureMoveOfEnemy(pieces, playerColor)
+        val playerPiecesWithMoves =
+            gameEngine.calculateAndReturnAllPossibleMovesOfPlayer(pieces, playerColor, enemyPieces, moves)
 
         return playerPiecesWithMoves.plus(enemyPieces)
+    }
+
+    private fun checkPlayerHavePossibleMoves(
+        piecesWithCorrectMoves: List<Piece>,
+        playerColor: PlayerColor
+    ): Boolean {
+        val piecesWithMoves = piecesWithCorrectMoves.filter { it.color == playerColor }
+
+        return piecesWithMoves.all { it.possibleMoves.isNotEmpty() }
     }
 }

@@ -79,10 +79,16 @@ class GameEngine(
     ): Move = stringToMoveConverter.createMove(pieceFrom, pieceToId, promotedPiece, pieces)
 
 
-    fun getTheKingIsChecked(color: PlayerColor, piecesArray: List<Piece>, moves: String): Boolean {
+    fun getTheKingIsChecked(
+        color: PlayerColor,
+        piecesArray: List<Piece>,
+        enemyPieces: List<Piece>,
+        moves: String
+    ): Boolean {
         val king = piecesArray.find { it.color == color && it is King }
         val enemyColor = if (color == PlayerColor.WHITE) PlayerColor.BLACK else PlayerColor.WHITE
-        val allPossibleMovesOfEnemy = calculateAndReturnAllPossibleMovesOfPlayer(piecesArray, enemyColor, moves)
+        val allPossibleMovesOfEnemy =
+            calculateAndReturnAllPossibleMovesOfPlayer(piecesArray, enemyColor, enemyPieces, moves)
 
         return checkKingPositionIsChecked(allPossibleMovesOfEnemy, king!!)
     }
@@ -107,22 +113,57 @@ class GameEngine(
     fun calculateAndReturnAllPossibleMovesOfPlayer(
         piecesArray: List<Piece>,
         color: PlayerColor,
+        enemyPieces: List<Piece>,
         moves: String
-    ): List<Piece> = piecesArray.filter { it.color == color }
-        .map { setAllPossibleMovesForPieceAndReturnPiece(it, piecesArray, moves) }
+    ): List<Piece> {
+        val allPossibleMovesOfPlayer = piecesArray.filter { it.color == color }
+            .map { setAllPossibleMovesForPieceAndReturnPiece(it, piecesArray, enemyPieces, moves) }
+        val correctMoves = dontCauseCheck(allPossibleMovesOfPlayer, color, enemyPieces)
+        return checkPieceIsCoveringKingAndFilterMoves(correctMoves, enemyPieces, color)
+    }
+
+    fun calculateAndReturnCaptureMoveOfEnemy(piecesArray: List<Piece>, color: PlayerColor): List<Piece> {
+        return piecesArray.filter { it.color != color }
+            .map { getCaptureMoveOfEnemy(it, piecesArray) }
+    }
 
     fun getEnemyPieces(piecesArray: List<Piece>, color: PlayerColor) = piecesArray.filter { it.color != color }
 
-
-    private fun setAllPossibleMovesForPieceAndReturnPiece(piece: Piece, allPieces: List<Piece>, moves: String): Piece {
+    fun getCaptureMoveOfEnemy(piece: Piece, allPieces: List<Piece>): Piece {
         return piece.apply {
             possibleMoves = when {
                 piece.isKing() -> piece.getAllPossibleDirections()
                     .asSequence()
                     .map { direction -> getAllPossibleMovesFromDirection(piece, direction, allPieces) }
                     .flatten()
-                    .plus(getSmallCastleIfPossible(piece, allPieces))
-                    .plus(getBigCastleIfPossible(piece, allPieces))
+                    .toList()
+
+                piece.isPawn() -> listOfNotNull(isPawnCapturePossible(piece, allPieces)).flatten()
+
+                else -> {
+                    piece.getAllPossibleDirections()
+                        .map { direction -> getAllPossibleMovesFromDirection(piece, direction, allPieces) }
+                        .flatten()
+                }
+            }
+        }
+    }
+
+
+    private fun setAllPossibleMovesForPieceAndReturnPiece(
+        piece: Piece,
+        allPieces: List<Piece>,
+        enemyPieces: List<Piece>,
+        moves: String
+    ): Piece {
+        return piece.apply {
+            possibleMoves = when {
+                piece.isKing() -> piece.getAllPossibleDirections()
+                    .asSequence()
+                    .map { direction -> getAllPossibleMovesFromDirection(piece, direction, allPieces) }
+                    .flatten()
+                    .plus(getSmallCastleIfPossible(piece, allPieces, enemyPieces))
+                    .plus(getBigCastleIfPossible(piece, allPieces, enemyPieces))
                     .toList()
                     .filterNotNull()
 
@@ -221,8 +262,12 @@ class GameEngine(
         return fields
     }
 
-    private fun getSmallCastleIfPossible(pieceFrom: Piece, piecesArray: List<Piece>): PossibleMove? {
-        val smallCastle = getFieldForCastle(pieceFrom, true, piecesArray)
+    private fun getSmallCastleIfPossible(
+        pieceFrom: Piece,
+        piecesArray: List<Piece>,
+        enemyPieces: List<Piece>
+    ): PossibleMove? {
+        val smallCastle = getFieldForCastle(pieceFrom, true, piecesArray, enemyPieces)
 
         return if (smallCastle != null) {
             PossibleMove(MoveType.SMALL_CASTLE, smallCastle)
@@ -231,8 +276,12 @@ class GameEngine(
         }
     }
 
-    private fun getBigCastleIfPossible(pieceFrom: Piece, piecesArray: List<Piece>): PossibleMove? {
-        val bigCastle = getFieldForCastle(pieceFrom, false, piecesArray)
+    private fun getBigCastleIfPossible(
+        pieceFrom: Piece,
+        piecesArray: List<Piece>,
+        enemyPieces: List<Piece>
+    ): PossibleMove? {
+        val bigCastle = getFieldForCastle(pieceFrom, false, piecesArray, enemyPieces)
 
         return if (bigCastle != null) {
             PossibleMove(MoveType.BIG_CASTLE, bigCastle)
@@ -316,11 +365,17 @@ class GameEngine(
         }
     }
 
-    private fun getFieldForCastle(pieceFrom: Piece, smallCastle: Boolean, piecesArray: List<Piece>): String? {
-        if (getRookToCastle(pieceFrom, smallCastle, piecesArray) != null && checkCastleEmptyFields(
+    private fun getFieldForCastle(
+        pieceFrom: Piece,
+        smallCastle: Boolean,
+        piecesArray: List<Piece>,
+        enemyPieces: List<Piece>
+    ): String? {
+        if (getRookToCastle(pieceFrom, smallCastle, piecesArray) != null && checkCastleFieldsEmptyAndNotChecked(
                 pieceFrom,
                 smallCastle,
-                piecesArray
+                piecesArray,
+                enemyPieces
             ) && !pieceFrom.hasMoved
         ) {
             return getReturnedFieldForCastle(pieceFrom, smallCastle)
@@ -349,7 +404,12 @@ class GameEngine(
         return null
     }
 
-    private fun checkCastleEmptyFields(king: Piece, smallCastle: Boolean, allPieces: List<Piece>): Boolean {
+    private fun checkCastleFieldsEmptyAndNotChecked(
+        king: Piece,
+        smallCastle: Boolean,
+        allPieces: List<Piece>,
+        enemyPieces: List<Piece>
+    ): Boolean {
         val size = if (smallCastle) 2 else 3
         val direction = if (smallCastle) 1 else -1
         val row = charToNumber(king.id[0])
@@ -359,25 +419,24 @@ class GameEngine(
             val kingPositionLetter = numberToChar(x)
             val searchedPiece = getPieceById("${kingPositionLetter}${king.id[1]}", allPieces)
             val searchedField = getFieldById("${kingPositionLetter}${king.id[1]}")
+            val isFieldChecked = checkFieldIsCheckedByEnemy(searchedField, enemyPieces)
 
-            if (searchedPiece == null && checkFieldIsCheckedByEnemy(king.color, searchedField, allPieces)) {
-                return false
+            when {
+                searchedPiece != null || isFieldChecked -> return false
+                i == size && !isFieldChecked -> return true
             }
         }
-        return true
+        return false
     }
 
     private fun checkFieldIsCheckedByEnemy(
-        color: PlayerColor,
         searchedField: String?,
-        piecesArray: List<Piece>
+        enemyPieces: List<Piece>
     ): Boolean {
         if (searchedField != null) {
-            val enemyColor = if (color == PlayerColor.WHITE) PlayerColor.BLACK else PlayerColor.WHITE
-            val enemyPiecesCorrectMoves = calculateAndReturnAllPossibleMovesOfPlayer(piecesArray, enemyColor, "")
-            val enemyCorrectMoveField = getCheckedFields(enemyPiecesCorrectMoves)
+            val enemyCorrectMoveField = getCheckedFields(enemyPieces).distinct()
 
-            return !enemyCorrectMoveField.contains(searchedField)
+            return enemyCorrectMoveField.contains(searchedField)
         }
         return false
     }
@@ -420,12 +479,11 @@ class GameEngine(
     private fun numberToChar(column: Int): Char = (column + 64).toChar()
     private fun getPieceById(id: String, allPieces: List<Piece>): Piece? = allPieces.find { it.id == id }
 
-    fun dontCauseCheck(pieces: List<Piece>, color: PlayerColor): List<Piece> {
-        val enemyColor = if (color == PlayerColor.WHITE) PlayerColor.BLACK else PlayerColor.WHITE
+    fun dontCauseCheck(pieces: List<Piece>, color: PlayerColor, enemyPieces: List<Piece>): List<Piece> {
         val king =
-            pieces.find { it.name == PiecesNames.KING && it.color == color } ?: throw WrongMove("$color King not found")
-        val enemyMoves = calculateAndReturnAllPossibleMovesOfPlayer(pieces, enemyColor, "")
-        val checkedFields = getCheckedFields(enemyMoves).distinct()
+            pieces.find { it.name == PiecesNames.KING && it.color == color }
+                ?: throw WrongMove("$color King not found")
+        val checkedFields = getCheckedFields(enemyPieces).distinct()
 
         king.possibleMoves = king.possibleMoves.filterNot { move ->
             checkedFields.contains(move.fieldId)
@@ -440,42 +498,41 @@ class GameEngine(
         }
     }
 
-    fun checkPieceIsCoveringKing(
-        pieces: List<Piece>,
+    fun checkPieceIsCoveringKingAndFilterMoves(
+        playerPieces: List<Piece>,
+        enemyPieces: List<Piece>,
         color: PlayerColor
     ): List<Piece> {
-        val numberOfFieldsWithPiece = 2
-        val directionsOfCheckKing = directionsOfCheckKing(pieces, color)
-        val numberOfFieldsWhichHavePiece = directionsOfCheckKing.flatten().count { fieldId ->
-            getPieceById(fieldId, pieces)?.color == color
-        }
-        return pieces.map { piece ->
-            if (directionsOfCheckKing.any { it.contains(piece.id) } && numberOfFieldsWhichHavePiece == numberOfFieldsWithPiece && !piece.isKing()) {
-                piece.possibleMoves =
-                    piece.possibleMoves.filter { directionsOfCheckKing.flatten().contains(it.fieldId) }
-            }
-            piece
-        }
-    }
-
-    private fun directionsOfCheckKing(allPieces: List<Piece>, color: PlayerColor): List<List<String>> {
-        val directions = mutableListOf<List<String>>()
-        for (piece in allPieces) {
-            if (piece.canMoveMultipleSquares() && piece.color != color) {
-                val pieceDirections = mutableListOf<List<String>>()
-                val possibleDirections = piece.getAllPossibleDirections()
-                for (direction in possibleDirections) {
-                    val fields = getAllMovesFromDirectionAndSearchKing(piece, direction, allPieces)
-                    if (fields.isNotEmpty()) {
-                        pieceDirections.add(fields.plus(piece.id))
+        val allPieces = listOf(playerPieces, enemyPieces).flatten()
+        for (piece in enemyPieces) {
+            when {
+                piece.canMoveMultipleSquares() -> {
+                    val pieceDirections = mutableListOf<String>()
+                    val possibleDirections = piece.getAllPossibleDirections()
+                    for (direction in possibleDirections) {
+                        if (piece?.id == "B5") {
+                            println()
+                        }
+                        val fields = getAllMovesFromDirectionAndSearchKing(piece, direction, allPieces).distinct()
+                        if (fields.isNotEmpty()) {
+                            pieceDirections += fields.plus(piece.id)
+                            val numberOfFieldsWhichHavePiece = pieceDirections.count { fieldId ->
+                                getPieceById(fieldId, playerPieces) != null
+                            }
+                            return playerPieces.map { checkedPiece ->
+                                if (pieceDirections.any { it.contains(checkedPiece.id) } && numberOfFieldsWhichHavePiece == 2 && !checkedPiece.isKing()) {
+                                    checkedPiece.possibleMoves =
+                                        checkedPiece.possibleMoves.filter { pieceDirections.contains(it.fieldId) }
+                                }
+                                checkedPiece
+                            }
+                        }
+                        //todo check array of piece doesnt contain pieces
                     }
                 }
-                if (pieceDirections.isNotEmpty()) {
-                    directions.addAll(pieceDirections)
-                }
             }
         }
-        return directions
+        return playerPieces
     }
 
     private fun getAllMovesFromDirectionAndSearchKing(
@@ -490,6 +547,9 @@ class GameEngine(
 
         while (field != null) {
             val piece = getPieceById(field, allPieces)
+            if (direction == Vector2d(1, 1) && piece?.id == "B5") {
+                println()
+            }
             if (piece == null) {
                 fields.add(field)
             } else if (piece.color != currentPiece.color) {
@@ -503,6 +563,7 @@ class GameEngine(
             counter++
             field = getFieldByXY(vector.x + direction.x * counter, vector.y + direction.y * counter)
         }
+        //todo repair
         return emptyList()
     }
 }
