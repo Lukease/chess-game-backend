@@ -2,6 +2,7 @@ package pl.lpawlowski.chessapp.service
 
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import pl.lpawlowski.chessapp.constants.PiecesNames
 import pl.lpawlowski.chessapp.constants.PlayerColor
 import pl.lpawlowski.chessapp.entities.DrawOffers
 import pl.lpawlowski.chessapp.entities.Game
@@ -18,8 +19,12 @@ import pl.lpawlowski.chessapp.model.game.PieceDto
 import pl.lpawlowski.chessapp.model.offers.GameDrawOfferRequest
 import pl.lpawlowski.chessapp.repositories.DrawOffersRepository
 import pl.lpawlowski.chessapp.web.chess_possible_move.Move
+import pl.lpawlowski.chessapp.web.chess_possible_move.MoveHistory
 import pl.lpawlowski.chessapp.web.pieces.Piece
+import java.time.Duration
 import java.time.LocalDateTime
+import java.util.Collections.max
+import kotlin.math.max
 
 @Service
 class GameService(
@@ -32,6 +37,8 @@ class GameService(
         val game: Game = Game().apply {
             timePerPlayerInSeconds = gameCreateRequest.timePerPlayerInSeconds
             fen = gameEngine.getDefaultFen()
+            timeLeftBlack = gameCreateRequest.timePerPlayerInSeconds
+            timeLeftWhite = gameCreateRequest.timePerPlayerInSeconds
 
             when (gameCreateRequest.isWhitePlayer) {
                 true -> whitePlayer = user
@@ -79,59 +86,52 @@ class GameService(
         val pieces = gameEngine.convertFenToPiecesList(game.fen)
         val moves = game.moves.split(",")
         val whoseTurn = when {
-            moves.size % 2 != 0 -> PlayerColor.WHITE
+            moves.size % 2 == 0 -> PlayerColor.WHITE
             else -> PlayerColor.BLACK
         }
         val playerColor = when (user) {
             game.whitePlayer -> PlayerColor.WHITE
             else -> PlayerColor.BLACK
         }
+        val enemyColor = if (playerColor == PlayerColor.WHITE) PlayerColor.BLACK else PlayerColor.WHITE
 
         when (playerColor) {
             whoseTurn -> {
-                val piecesWithCorrectMoves = getPieceWithCorrectMovesOfPlayer(playerColor, pieces, game.moves)
+                val lastMove = if (moves.isNotEmpty()) getGameLastMove(game.allMovesFen, moves, playerColor) else null
+                val piecesWithCorrectMoves = getPieceWithCorrectMovesOfPlayer(playerColor, pieces, lastMove)
                 val move: Move = gameEngine.convertStringToMove(
                     gameMakeMoveRequest.pieceFromId,
                     gameMakeMoveRequest.fieldToId,
                     gameMakeMoveRequest.promotedPieceName,
                     piecesWithCorrectMoves
                 )
+                val currentFen = gameEngine.convertPieceListToFen(move.pieces)
 
-                game.fen = gameEngine.convertPieceListToFen(move.pieces)
+                game.fen = currentFen
+                game.allMovesFen += if (game.allMovesFen == "") currentFen else "/$currentFen"
+
+                val enemyPieces = gameEngine.calculateAndReturnCaptureMoveOfEnemy(pieces, playerColor)
+                val playerKing = findKing(move.pieces, playerColor)
+                val enemyKing = findKing(enemyPieces, enemyColor)
+                val checkedKingsId = getCheckedKingsId(playerColor, enemyPieces, piecesWithCorrectMoves)
+
+                addIsCheckToMoveAndChangeMoveTime(game, checkedKingsId, enemyKing, move, user)
+                checkIfPlayerDontHaveMoveChangeGameStatus(
+                    piecesWithCorrectMoves,
+                    playerColor,
+                    checkedKingsId,
+                    playerKing,
+                    game
+                )
 
                 val pieceDto = move.pieces.map { PieceDto.fromDomain(it) }
-                val enemyPieces = gameEngine.calculateAndReturnCaptureMoveOfEnemy(pieces, playerColor)
-                val kingIsChecked = gameEngine.getTheKingIsChecked(playerColor, pieces, enemyPieces, game.moves)
-                val isCheck = if (kingIsChecked) "+" else ""
-                game.moves = when (game.moves.isBlank()) {
-                    true -> move.nameOfMove.plus(isCheck)
-                    false -> "${game.moves},${move.nameOfMove.plus(isCheck)}"
-                }
-                when (user) {
-                    game.whitePlayer -> game.lastMoveWhite = LocalDateTime.now()
-                    else -> game.lastMoveBlack = LocalDateTime.now()
-                }
-
-                val playerHaveMove = checkPlayerHavePossibleMoves(piecesWithCorrectMoves, playerColor)
-                when {
-                    playerHaveMove && kingIsChecked -> {
-                        game.gameStatus = GameStatus.FINISHED.name
-                        game.result =
-                            if (playerColor == PlayerColor.WHITE) GameResult.BLACK.name else GameResult.WHITE.name
-                    }
-
-                    playerHaveMove -> {
-                        game.gameStatus = GameStatus.FINISHED.name
-                        game.result = GameResult.DRAW.name
-                    }
-                }
 
                 return MakeMoveResponse(
                     pieceDto,
                     GameDto.fromDomain(game),
                     whoseTurn.name,
                     playerColor.name,
-                    kingIsChecked
+                    checkedKingsId
                 )
             }
 
@@ -145,24 +145,29 @@ class GameService(
         val pieces = gameEngine.convertFenToPiecesList(game.fen)
         val moves = game.moves.split(",")
         val whoseTurn = when {
-            moves.size % 2 != 0 -> PlayerColor.WHITE
+            moves.size % 2 == 0 -> PlayerColor.WHITE
             else -> PlayerColor.BLACK
         }
         val playerColor = when (user) {
             game.whitePlayer -> PlayerColor.WHITE
             else -> PlayerColor.BLACK
         }
+        val lastMove = if (moves.isNotEmpty()) getGameLastMove(game.allMovesFen, moves, playerColor) else null
         val piecesWithCorrectMoves =
-            if (playerColor == whoseTurn) getPieceWithCorrectMovesOfPlayer(playerColor, pieces, game.moves) else pieces
+            if (playerColor == whoseTurn) getPieceWithCorrectMovesOfPlayer(
+                playerColor,
+                pieces,
+                lastMove
+            ) else pieces
         val enemyPieces = gameEngine.calculateAndReturnCaptureMoveOfEnemy(pieces, playerColor)
-        val kingIsChecked = gameEngine.getTheKingIsChecked(playerColor, pieces, enemyPieces, game.moves)
-        //todo king is checked add possible moves need to remove it
+        val checkedKingsId = getCheckedKingsId(playerColor, enemyPieces, piecesWithCorrectMoves)
+
         return MakeMoveResponse(
             piecesWithCorrectMoves.map { PieceDto.fromDomain(it) },
             GameDto.fromDomain(game),
             whoseTurn.name.lowercase(),
             playerColor.name.lowercase(),
-            kingIsChecked
+            checkedKingsId
         )
     }
 
@@ -238,21 +243,104 @@ class GameService(
     private fun getPieceWithCorrectMovesOfPlayer(
         playerColor: PlayerColor,
         pieces: List<Piece>,
-        moves: String
+        lastMove: MoveHistory?
     ): List<Piece> {
+
         val enemyPieces = gameEngine.calculateAndReturnCaptureMoveOfEnemy(pieces, playerColor)
         val playerPiecesWithMoves =
-            gameEngine.calculateAndReturnAllPossibleMovesOfPlayer(pieces, playerColor, enemyPieces, moves)
+            gameEngine.calculateAndReturnAllPossibleMovesOfPlayer(pieces, playerColor, enemyPieces, lastMove)
 
         return playerPiecesWithMoves.plus(enemyPieces)
     }
 
-    private fun checkPlayerHavePossibleMoves(
-        piecesWithCorrectMoves: List<Piece>,
+    private fun getGameLastMove(
+        allFenList: String,
+        movesList: List<String>,
         playerColor: PlayerColor
-    ): Boolean {
-        val piecesWithMoves = piecesWithCorrectMoves.filter { it.color == playerColor }
+    ): MoveHistory {
+        val everyMoveFen = allFenList.split("/")
+        val pieces = gameEngine.convertFenToPiecesList(everyMoveFen[everyMoveFen.size - 2])
+        val lastMove = movesList[movesList.size - 1]
+        return gameEngine.checkLastMove(lastMove, pieces, playerColor)
+    }
 
-        return piecesWithMoves.all { it.possibleMoves.isNotEmpty() }
+    private fun checkPlayerHavePossibleMoves(piecesWithCorrectMoves: List<Piece>, playerColor: PlayerColor): Boolean {
+        return piecesWithCorrectMoves.any { it.color == playerColor && it.possibleMoves.isNotEmpty() }
+    }
+
+    private fun getCheckedKingsId(
+        playerColor: PlayerColor,
+        enemyPieces: List<Piece>,
+        playerPieces: List<Piece>
+    ): List<String> {
+        val enemyColor = if (playerColor == PlayerColor.WHITE) PlayerColor.BLACK else PlayerColor.WHITE
+        val playerKing = findKing(playerPieces, playerColor)
+        val enemyKing = findKing(enemyPieces, enemyColor)
+        val isPlayerKingChecked =
+            if (gameEngine.checkKingPositionIsChecked(enemyPieces, playerKing)) playerKing.id else null
+        val isEnemyKingChecked =
+            if (gameEngine.checkKingPositionIsChecked(playerPieces, enemyKing)) enemyKing.id else null
+
+        return listOfNotNull(isPlayerKingChecked, isEnemyKingChecked)
+    }
+
+    private fun findKing(pieces: List<Piece>, color: PlayerColor): Piece {
+        return pieces.find { it.color == color && it.name == PiecesNames.KING }
+            ?: throw NotFound("$color King not found!!")
+    }
+
+    private fun checkIfPlayerDontHaveMoveChangeGameStatus(
+        piecesWithCorrectMoves: List<Piece>,
+        playerColor: PlayerColor,
+        checkedKingsId: List<String>,
+        playerKing: Piece,
+        game: Game
+    ): Game {
+        val playerHaveMove = checkPlayerHavePossibleMoves(piecesWithCorrectMoves, playerColor)
+        when {
+            !playerHaveMove && checkedKingsId.contains(playerKing.id) -> {
+                game.gameStatus = GameStatus.FINISHED.name
+                game.result =
+                    if (playerColor == PlayerColor.WHITE) GameResult.BLACK.name else GameResult.WHITE.name
+            }
+
+            !playerHaveMove -> {
+                game.gameStatus = GameStatus.FINISHED.name
+                game.result = GameResult.DRAW.name
+            }
+        }
+        return game
+    }
+
+    private fun addIsCheckToMoveAndChangeMoveTime(
+        game: Game,
+        checkedKingsId: List<String>,
+        enemyKing: Piece,
+        move: Move,
+        user: User
+    ): Game {
+        val isCheck = if (checkedKingsId.contains(enemyKing.id)) "+" else ""
+        val moveName = move.nameOfMove.plus(isCheck)
+
+        game.moves = when (game.moves.isBlank()) {
+            true -> moveName
+            false -> "${game.moves},$moveName"
+        }
+        when (user) {
+            game.whitePlayer -> {
+                val timeElapsed = Duration.between(game.lastMoveWhite, LocalDateTime.now()).seconds
+
+                game.lastMoveWhite = LocalDateTime.now()
+                game.timeLeftWhite -= timeElapsed.toInt()
+            }
+            else -> {
+                val timeElapsed = Duration.between(game.lastMoveBlack, LocalDateTime.now()).seconds
+
+                game.lastMoveBlack = LocalDateTime.now()
+                game.timeLeftBlack = timeElapsed.toInt()
+            }
+        }
+
+        return game
     }
 }

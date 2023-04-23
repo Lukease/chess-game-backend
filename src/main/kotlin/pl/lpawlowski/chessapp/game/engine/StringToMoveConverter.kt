@@ -3,8 +3,10 @@ package pl.lpawlowski.chessapp.game.engine
 import org.springframework.stereotype.Component
 import pl.lpawlowski.chessapp.constants.PiecesNames
 import pl.lpawlowski.chessapp.constants.PlayerColor
+import pl.lpawlowski.chessapp.exception.NotFound
 import pl.lpawlowski.chessapp.exception.WrongMove
 import pl.lpawlowski.chessapp.web.chess_possible_move.Move
+import pl.lpawlowski.chessapp.web.chess_possible_move.MoveHistory
 import pl.lpawlowski.chessapp.web.chess_possible_move.Vector2d
 import pl.lpawlowski.chessapp.web.pieces.*
 
@@ -30,21 +32,25 @@ class StringToMoveConverter {
         }
     }
 
-    //    fun convertStringMoveToMove(move: String, pieces: List<Piece>,index: Int): List<Piece>{
-//        val whoseTour = if (index % 2 != 0) PlayerColor.WHITE else PlayerColor.BLACK
-//        val pieceFromLetter = getStartingFile(move)
-//        val fieldToId = getMoveFieldToId(move)
-//
-////            val getMovesOfPlayer = calculateAndReturnAllPossibleMovesOfPlayer(pieceArray, whoseTour, moves)
-//        val promotedPieceIcon = getPieceIconIfPawnPromotion(move)
-//        val promotedPiece =
-//            if (promotedPieceIcon != null) createPieceByIcon(promotedPieceIcon, whoseTour) else null
-//        val piece = pieceArray.first { it ->
-//            it.possibleMoves.any { move ->
-//                move.fieldId == fieldToId
-//            } && (pieceFromLetter == null || it.id[0] == pieceFromLetter[0].uppercaseChar())
-//        }
-//    }
+    fun convertStringMoveToMove(move: String, pieces: List<Piece>, playerColor: PlayerColor): MoveHistory {
+        val icon = extractIconFromString(move)
+        val possiblePiece = createPieceByIcon(icon, playerColor)
+        val piece = pieces.find { searchedPiece ->
+            searchedPiece.name == possiblePiece.name && searchedPiece.color == playerColor &&
+                    searchedPiece.possibleMoves.any { it.fieldId == getMoveFieldToId(move) }
+        } ?: throw NotFound("Any of pieces don't have a correct move at field ID ${getMoveFieldToId(move)}")
+
+        val lastMove = piece.possibleMoves.find { it.fieldId == getMoveFieldToId(move) }
+            ?: throw NotFound("Field ID ${getMoveFieldToId(move)} not found in piece at ID ${piece.id}")
+
+        val promotedPiece =
+            if (lastMove.moveType == MoveType.PROM) createPieceByIcon(move.last().toString(), playerColor).name.name
+            else null
+
+        return MoveHistory(move, lastMove.moveType, piece.id, getMoveFieldToId(move), promotedPiece, move.contains("+"))
+    }
+
+
     fun getStartingFile(move: String): String? {
         return if (move.length > 2) {
             val regex = "^[a-h]?"
@@ -61,7 +67,13 @@ class StringToMoveConverter {
         return squareMatch.uppercase()
     }
 
-    fun createPieceByIcon(icon: String, color: PlayerColor): Piece {
+    fun extractIconFromString(str: String): String? {
+        val pattern = Regex("\\p{So}")
+        val matchResult = pattern.find(str)
+        return matchResult?.value
+    }
+
+    fun createPieceByIcon(icon: String?, color: PlayerColor): Piece {
         return when (icon) {
             "♗" -> Bishop(color, "", PiecesNames.BISHOP)
             "♔" -> King(color, "", PiecesNames.KING)

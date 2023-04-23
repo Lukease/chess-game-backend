@@ -15,9 +15,13 @@ class Game {
     var lastMoveBlack: LocalDateTime? = null
     var lastMoveWhite: LocalDateTime? = null
     var timePerPlayerInSeconds: Int = 800
+    var timeLeftWhite: Int = 800
+    var timeLeftBlack: Int = 800
     var gameStatus: String = GameStatus.CREATED.name
     var result: String? = null
     lateinit var fen: String
+    lateinit var allMovesFen: String
+
     @ManyToOne
     @JoinColumn(name = "player_white_id")
     var whitePlayer: User? = null
