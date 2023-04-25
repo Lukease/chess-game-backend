@@ -9,6 +9,7 @@ import pl.lpawlowski.chessapp.web.chess_possible_move.MoveHistory
 import pl.lpawlowski.chessapp.web.chess_possible_move.PossibleMove
 import pl.lpawlowski.chessapp.web.chess_possible_move.Vector2d
 import pl.lpawlowski.chessapp.web.pieces.*
+import java.lang.Math.abs
 
 @Service
 class GameEngine(
@@ -33,20 +34,25 @@ class GameEngine(
                     val column: String = numberToChar(number).toString()
                     val color = if (char.isUpperCase()) PlayerColor.WHITE else PlayerColor.BLACK
                     val id: String = column + (8 - row)
-                    when (char.lowercaseChar()) {
-                        'b' -> Bishop(color, id, PiecesNames.BISHOP)
-                        'k' -> King(color, id, PiecesNames.KING)
-                        'n' -> Knight(color, id, PiecesNames.KNIGHT)
-                        'p' -> Pawn(color, id, PiecesNames.PAWN)
-                        'q' -> Queen(color, id, PiecesNames.QUEEN)
-                        'r' -> Rook(color, id, PiecesNames.ROOK)
-                        else -> throw WrongMove("Piece with char: ${char.lowercaseChar()} not found")
-                    }
+
+                    getPieceByChar(char.lowercaseChar(), color, id)
                 }
             }
         }.filterNotNull()
 
         return piecesArray
+    }
+
+    fun getPieceByChar(char: Char, color: PlayerColor, id: String): Piece {
+        return when (char.lowercaseChar()) {
+            'b' -> Bishop(color, id, PiecesNames.BISHOP)
+            'k' -> King(color, id, PiecesNames.KING)
+            'n' -> Knight(color, id, PiecesNames.KNIGHT)
+            'p' -> Pawn(color, id, PiecesNames.PAWN)
+            'q' -> Queen(color, id, PiecesNames.QUEEN)
+            'r' -> Rook(color, id, PiecesNames.ROOK)
+            else -> throw WrongMove("Piece with char: ${char.lowercaseChar()} not found")
+        }
     }
 
     fun convertPieceListToFen(pieces: List<Piece>): String {
@@ -92,23 +98,59 @@ class GameEngine(
         return checkKingPositionIsChecked(allPossibleMovesOfEnemy, king!!)
     }
 
-    fun checkLastMove(move: String, pieces: List<Piece>, playerColor: PlayerColor): MoveHistory {
-        return when (move) {
-            "O-O" -> {
-                val kingId = if (playerColor == PlayerColor.WHITE) "E1" else "E8"
-                val fieldToId = if (playerColor == PlayerColor.WHITE) "G1" else "G8"
-                MoveHistory(move, MoveType.SMALL_CASTLE, kingId, fieldToId, null, move.contains("+"))
-            }
+    fun checkLastMove(
+        lastMoveFromTo: String,
+        pieces: List<Piece>,
+        playerColor: PlayerColor,
+        historyName: String
+    ): MoveHistory {
+        val pieceIdFrom = if (lastMoveFromTo[0].isUpperCase()) {
+            "${lastMoveFromTo[1].uppercase()}${lastMoveFromTo[2]}"
+        } else {
+            "${lastMoveFromTo[0].uppercase()}${lastMoveFromTo[1]}"
+        }
+        val fieldToId = if (lastMoveFromTo[0].isUpperCase()) {
+            "${lastMoveFromTo[4].uppercase()}${lastMoveFromTo[5]}"
+        } else {
+            "${lastMoveFromTo[3].uppercase()}${lastMoveFromTo[4]}"
+        }
+        val piece = if (lastMoveFromTo[0].isUpperCase()) getPieceByChar(
+            lastMoveFromTo[0].lowercaseChar(),
+            playerColor,
+            pieceIdFrom
+        ) else Pawn(playerColor, pieceIdFrom, PiecesNames.PAWN)
 
-            "O-O-O" -> {
-                val kingId = if (playerColor == PlayerColor.WHITE) "E1" else "E8"
-                val fieldToId = if (playerColor == PlayerColor.WHITE) "C1" else "C8"
-                MoveHistory(move, MoveType.BIG_CASTLE, kingId, fieldToId, null, move.contains("+"))
-            }
+        return when (historyName) {
+            "O-O" -> MoveHistory(
+                historyName,
+                MoveType.SMALL_CASTLE,
+                pieceIdFrom,
+                fieldToId,
+                null,
+                lastMoveFromTo.contains("+")
+            )
 
-            else -> stringToMoveConverter.convertStringMoveToMove(move, pieces, playerColor)
+            "O-O-O" -> MoveHistory(
+                historyName,
+                MoveType.BIG_CASTLE,
+                pieceIdFrom,
+                fieldToId,
+                null,
+                lastMoveFromTo.contains("+")
+            )
+
+            else -> stringToMoveConverter.convertStringMoveToMove(
+                lastMoveFromTo,
+                pieces,
+                playerColor,
+                pieceIdFrom,
+                fieldToId,
+                piece,
+                historyName
+            )
         }
     }
+
 
     fun checkKingPositionIsChecked(allPossibleMovesOfEnemy: List<Piece>, king: Piece): Boolean =
         allPossibleMovesOfEnemy.find { piece -> piece.possibleMoves.any { it.fieldId == king.id } } != null
@@ -146,6 +188,41 @@ class GameEngine(
                 piece.isPawn() -> listOfNotNull(isPawnCapturePossible(piece, allPieces)).flatten()
 
                 else -> {
+                    piece.getAllPossibleDirections()
+                        .map { direction -> getAllPossibleMovesFromDirection(piece, direction, allPieces) }
+                        .flatten()
+                }
+            }
+        }
+    }
+
+    fun getPossibleLastMoveWithoutCastles(piece: Piece, allPieces: List<Piece>): Piece {
+        return piece.apply {
+            possibleMoves = when {
+                piece.isKing() -> piece.getAllPossibleDirections()
+                    .asSequence()
+                    .map { direction -> getAllPossibleMovesFromDirection(piece, direction, allPieces) }
+                    .flatten()
+                    .toList()
+
+
+                piece.isPawn() -> {
+                    listOfNotNull(
+                        getMoveTwoIfPossible(piece, allPieces),
+                        getPossibleMoveOfPawnOneForward(piece, allPieces)
+                    ).plus(isPawnCapturePossible(piece, allPieces)).map { correctMove ->
+                        if ((correctMove.fieldId[1] == '8' && piece.color == PlayerColor.WHITE) || (correctMove.fieldId[1] == '1' && piece.color == PlayerColor.BLACK)) {
+                            PossibleMove(MoveType.PROM, correctMove.fieldId)
+                        } else {
+                            correctMove
+                        }
+                    }
+                }
+
+                else -> {
+                    if (piece.id == "B5") {
+                        println()
+                    }
                     piece.getAllPossibleDirections()
                         .map { direction -> getAllPossibleMovesFromDirection(piece, direction, allPieces) }
                         .flatten()
@@ -359,12 +436,12 @@ class GameEngine(
     private fun isEnPassantPossible(pieceFrom: Piece, lastMove: MoveHistory): String? {
         val direction = if (pieceFrom.color == PlayerColor.WHITE) 1 else -1
 
-        return when (charToNumber(pieceFrom.id[0]) - charToNumber(lastMove.fieldTo[0])) {
-            -1, 1 -> {
+        return when {
+            lastMove.moveType != MoveType.MOVE_TWO -> null
+            abs(charToNumber(pieceFrom.id[0]) - charToNumber(lastMove.fieldTo[0])) == 1 -> {
                 val field = "${lastMove.fieldTo[0]}${lastMove.fieldTo[1] + direction}"
                 if (field in generateFields()) field else null
             }
-
             else -> null
         }
     }

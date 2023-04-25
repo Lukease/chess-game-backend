@@ -3,7 +3,6 @@ package pl.lpawlowski.chessapp.model.game
 import pl.lpawlowski.chessapp.entities.Game
 import pl.lpawlowski.chessapp.game.GameStatus
 import pl.lpawlowski.chessapp.model.user.UserDto
-import pl.lpawlowski.chessapp.web.chess_possible_move.MoveHistory
 import java.time.LocalDateTime
 
 data class GameDto(
@@ -36,5 +35,4 @@ data class GameDto(
             )
         }
     }
-
 }

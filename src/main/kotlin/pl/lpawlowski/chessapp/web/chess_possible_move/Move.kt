@@ -9,5 +9,6 @@ open class Move(
     val moveType: MoveType,
     val fieldFrom: String,
     val fieldTo: String,
-    val promotedPiece: String
+    val promotedPiece: String,
+    val nameOfMoveFromTo: String
 )

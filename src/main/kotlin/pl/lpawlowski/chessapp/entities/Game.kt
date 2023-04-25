@@ -20,7 +20,8 @@ class Game {
     var gameStatus: String = GameStatus.CREATED.name
     var result: String? = null
     lateinit var fen: String
-    lateinit var allMovesFen: String
+    var allMovesFen: String = ""
+    var movesFromTo: String = ""
 
     @ManyToOne
     @JoinColumn(name = "player_white_id")
