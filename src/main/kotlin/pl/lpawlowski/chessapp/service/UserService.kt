@@ -7,6 +7,7 @@ import pl.lpawlowski.chessapp.entities.User
 import pl.lpawlowski.chessapp.exception.UserExistsException
 import pl.lpawlowski.chessapp.exception.WrongCredentialsException
 import pl.lpawlowski.chessapp.model.user.ChangePasswordRequest
+import pl.lpawlowski.chessapp.model.user.PlayerInfoDto
 import pl.lpawlowski.chessapp.model.user.UserDto
 import pl.lpawlowski.chessapp.model.user.UserLogInRequest
 import pl.lpawlowski.chessapp.repositories.UsersRepository
@@ -109,4 +110,6 @@ class UserService(
             .filter { it.validUtil?.isAfter(LocalDateTime.now()) ?: false }
             .orElseThrow { WrongCredentialsException("No active Token found") }
     }
+
+    fun getAllPlayersInfo(): List<PlayerInfoDto> =usersRepository.findAll().map { PlayerInfoDto.fromDomain(it)}
 }

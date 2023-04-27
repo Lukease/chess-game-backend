@@ -434,15 +434,16 @@ class GameEngine(
     }
 
     private fun isEnPassantPossible(pieceFrom: Piece, lastMove: MoveHistory): String? {
+        if (lastMove.moveType != MoveType.MOVE_TWO) return null
+
         val direction = if (pieceFrom.color == PlayerColor.WHITE) 1 else -1
+        val leftSide = numberToChar(charToNumber(pieceFrom.id[0]) - 1)
+        val rightSide = numberToChar(charToNumber(pieceFrom.id[0]) + 1)
 
         return when {
-            lastMove.moveType != MoveType.MOVE_TWO -> null
-            abs(charToNumber(pieceFrom.id[0]) - charToNumber(lastMove.fieldTo[0])) == 1 -> {
-                val field = "${lastMove.fieldTo[0]}${lastMove.fieldTo[1] + direction}"
-                if (field in generateFields()) field else null
-            }
-            else -> null
+            lastMove.fieldTo[0] !in listOf(leftSide, rightSide) -> null
+            lastMove.fieldTo[1] != pieceFrom.id[1] -> null
+            else -> "${lastMove.fieldTo[0]}${lastMove.fieldTo[1] + direction}".takeIf { it in generateFields() }
         }
     }
 

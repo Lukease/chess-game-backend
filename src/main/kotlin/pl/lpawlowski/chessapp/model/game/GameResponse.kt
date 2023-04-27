@@ -5,7 +5,9 @@ data class MakeMoveResponse(
     val gameInfo: GameDto,
     val whoseTurn: String,
     val playerColor: String,
-    val kingIsChecked: List<String>
+    val kingIsChecked: List<String>,
+    val fieldFrom: String?,
+    val fieldTo: String?
 )
 
 data class JoinGameResponse(

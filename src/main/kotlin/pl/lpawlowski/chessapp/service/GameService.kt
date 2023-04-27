@@ -137,7 +137,9 @@ class GameService(
                     GameDto.fromDomain(game),
                     whoseTurn.name,
                     playerColor.name,
-                    checkedKingsId
+                    checkedKingsId,
+                    move.fieldFrom,
+                    move.fieldTo
                 )
             }
 
@@ -175,7 +177,9 @@ class GameService(
             GameDto.fromDomain(game),
             whoseTurn.name.lowercase(),
             playerColor.name.lowercase(),
-            checkedKingsId
+            checkedKingsId,
+            lastMove?.fieldFrom,
+            lastMove?.fieldTo
         )
     }
 

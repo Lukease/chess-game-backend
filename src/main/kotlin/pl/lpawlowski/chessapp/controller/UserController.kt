@@ -64,4 +64,7 @@ class UserController(
 
         return UserDto.fromDomain(userService.updateUserEmail(user.login, changeEmailRequest.email))
     }
+
+    @GetMapping("/all-players")
+    fun getAllPlayersInfo(): List<PlayerInfoDto> = userService.getAllPlayersInfo()
 }
