@@ -11,7 +11,7 @@ class Game {
     @Id
     var id: Long? = null
 
-    var moves: String = ""
+    var history: String = ""
     var lastMoveBlack: LocalDateTime? = null
     var lastMoveWhite: LocalDateTime? = null
     var timePerPlayerInSeconds: Int = 800
@@ -19,9 +19,9 @@ class Game {
     var timeLeftBlack: Int = 800
     var gameStatus: String = GameStatus.CREATED.name
     var result: String? = null
-    lateinit var fen: String
-    var allMovesFen: String = ""
-    var movesFromTo: String = ""
+    lateinit var currentFen: String
+    var previousFen: String = ""
+    var historyExtended: String = ""
 
     @ManyToOne
     @JoinColumn(name = "player_white_id")

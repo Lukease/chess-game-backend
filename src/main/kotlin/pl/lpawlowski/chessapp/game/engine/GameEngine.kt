@@ -14,72 +14,9 @@ import java.lang.Math.abs
 @Service
 class GameEngine(
     private val stringToMoveConverter: StringToMoveConverter,
+    private val fenConverter: FenConverter
 ) {
     fun getDefaultFen(): String = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR"
-
-
-    fun convertFenToPiecesList(fen: String): List<Piece> {
-        val split = fen.split("/")
-        val piecesArray = split.flatMapIndexed { row: Int, it: String ->
-            val splitFen = it.toCharArray()
-            var columnPlus = 1
-
-            splitFen.mapIndexed { index, char: Char ->
-                if (char.isDigit()) {
-                    columnPlus = char.digitToInt()
-                    null
-
-                } else {
-                    val number: Int = index + columnPlus
-                    val column: String = numberToChar(number).toString()
-                    val color = if (char.isUpperCase()) PlayerColor.WHITE else PlayerColor.BLACK
-                    val id: String = column + (8 - row)
-
-                    getPieceByChar(char.lowercaseChar(), color, id)
-                }
-            }
-        }.filterNotNull()
-
-        return piecesArray
-    }
-
-    fun getPieceByChar(char: Char, color: PlayerColor, id: String): Piece {
-        return when (char.lowercaseChar()) {
-            'b' -> Bishop(color, id, PiecesNames.BISHOP)
-            'k' -> King(color, id, PiecesNames.KING)
-            'n' -> Knight(color, id, PiecesNames.KNIGHT)
-            'p' -> Pawn(color, id, PiecesNames.PAWN)
-            'q' -> Queen(color, id, PiecesNames.QUEEN)
-            'r' -> Rook(color, id, PiecesNames.ROOK)
-            else -> throw WrongMove("Piece with char: ${char.lowercaseChar()} not found")
-        }
-    }
-
-    fun convertPieceListToFen(pieces: List<Piece>): String {
-        val fen = mutableListOf<String>()
-        var emptyField = 0
-        for (row in 8 downTo 1) {
-            var rank = ""
-            for (column in 'a'..'h') {
-                val piece = pieces.find { it.id == "${column.uppercase()}$row" }
-                if (piece != null) {
-                    if (emptyField > 0) {
-                        rank += emptyField.toString()
-                        emptyField = 0
-                    }
-                    rank += piece.toFenChar()
-                } else {
-                    emptyField++
-                }
-            }
-            if (emptyField > 0) {
-                rank += emptyField.toString()
-                emptyField = 0
-            }
-            fen.add(rank)
-        }
-        return fen.joinToString("/")
-    }
 
     fun convertStringToMove(
         pieceFrom: String, pieceToId: String, promotedPiece: String?, pieces: List<Piece>
@@ -114,7 +51,7 @@ class GameEngine(
         } else {
             "${lastMoveFromTo[3].uppercase()}${lastMoveFromTo[4]}"
         }
-        val piece = if (lastMoveFromTo[0].isUpperCase()) getPieceByChar(
+        val piece = if (lastMoveFromTo[0].isUpperCase()) fenConverter.getPieceByChar(
             lastMoveFromTo[0].lowercaseChar(),
             playerColor,
             pieceIdFrom
@@ -164,6 +101,16 @@ class GameEngine(
     ): List<Piece> {
         val allPossibleMovesOfPlayer = piecesArray.filter { it.color == color }
             .map { setAllPossibleMovesForPieceAndReturnPiece(it, piecesArray, enemyPieces, lastMove) }
+        val correctMoves = dontCauseCheck(allPossibleMovesOfPlayer, color, enemyPieces)
+
+        return checkPieceIsCoveringKingAndFilterMoves(correctMoves, enemyPieces, color)
+    }
+
+    fun filterMovesDontCauseCheckAndCoveringKingPieces(
+        allPossibleMovesOfPlayer: List<Piece>,
+        color: PlayerColor,
+        enemyPieces: List<Piece>
+    ): List<Piece> {
         val correctMoves = dontCauseCheck(allPossibleMovesOfPlayer, color, enemyPieces)
 
         return checkPieceIsCoveringKingAndFilterMoves(correctMoves, enemyPieces, color)
@@ -505,11 +452,13 @@ class GameEngine(
 
             when {
                 searchedPiece != null || isFieldChecked -> return false
-                i == size && !isFieldChecked -> return true
+                size == 3 && i == 3 && searchedField != null -> return true
+                size == 2 && i == 2 && !isFieldChecked && searchedField != null -> return true
             }
         }
         return false
     }
+
 
     private fun checkFieldIsCheckedByEnemy(
         searchedField: String?,

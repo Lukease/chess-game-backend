@@ -67,4 +67,13 @@ class UserController(
 
     @GetMapping("/all-players")
     fun getAllPlayersInfo(): List<PlayerInfoDto> = userService.getAllPlayersInfo()
+
+    @GetMapping("/player")
+    fun getPlayerStats(
+        @RequestHeader("Authorization") authorization: String
+    ): PlayerInfoDto {
+        val user: User = userService.findUserByAuthorizationToken(authorization)
+
+        return PlayerInfoDto.fromDomain(user)
+    }
 }

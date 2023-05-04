@@ -87,12 +87,9 @@ class UserService(
 
     @Transactional
     fun updateUserPassword(user: User, changePasswordRequest: ChangePasswordRequest): User {
-        check(
-            passwordEncoder.matches(
-                changePasswordRequest.oldPassword,
-                user.password
-            )
-        ) { WrongCredentialsException("Incorrect old password!") }
+        if (!passwordEncoder.matches(changePasswordRequest.oldPassword, user.password)) {
+            throw WrongCredentialsException("Incorrect old password!")
+        }
 
         val encodedPassword = passwordEncoder.encode(changePasswordRequest.password)
 
@@ -104,12 +101,11 @@ class UserService(
     fun getAllUsers(): List<User> = usersRepository.findAll()
     fun findUserByLogin(login: String): User =
         usersRepository.findByLogin(login).orElseThrow { WrongCredentialsException("Incorrect login or password") }
-
     fun findUserByAuthorizationToken(activeToken: String): User {
         return usersRepository.findByActiveToken(activeToken)
             .filter { it.validUtil?.isAfter(LocalDateTime.now()) ?: false }
             .orElseThrow { WrongCredentialsException("No active Token found") }
     }
 
-    fun getAllPlayersInfo(): List<PlayerInfoDto> =usersRepository.findAll().map { PlayerInfoDto.fromDomain(it)}
+    fun getAllPlayersInfo(): List<PlayerInfoDto> = usersRepository.findAll().map { PlayerInfoDto.fromDomain(it) }
 }

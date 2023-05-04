@@ -12,6 +12,7 @@ import pl.lpawlowski.chessapp.exception.NotFound
 import pl.lpawlowski.chessapp.game.DrawOffersStatus
 import pl.lpawlowski.chessapp.game.GameResult
 import pl.lpawlowski.chessapp.game.GameStatus
+import pl.lpawlowski.chessapp.game.engine.FenConverter
 import pl.lpawlowski.chessapp.model.game.*
 import pl.lpawlowski.chessapp.repositories.GamesRepository
 import pl.lpawlowski.chessapp.game.engine.GameEngine
@@ -23,22 +24,21 @@ import pl.lpawlowski.chessapp.web.chess_possible_move.MoveHistory
 import pl.lpawlowski.chessapp.web.pieces.Piece
 import java.time.Duration
 import java.time.LocalDateTime
-import kotlin.math.abs
 
 @Service
 class GameService(
     private val gamesRepository: GamesRepository,
     private val gameEngine: GameEngine,
-    private val drawOffersRepository: DrawOffersRepository
+    private val drawOffersRepository: DrawOffersRepository,
+    private val fenConverter: FenConverter
 ) {
     @Transactional
     fun createGame(user: User, gameCreateRequest: GameCreateRequest): Game {
         val game: Game = Game().apply {
             timePerPlayerInSeconds = gameCreateRequest.timePerPlayerInSeconds
-            fen = gameEngine.getDefaultFen()
+            currentFen = gameCreateRequest.startingFen ?: gameEngine.getDefaultFen()
             timeLeftBlack = gameCreateRequest.timePerPlayerInSeconds
             timeLeftWhite = gameCreateRequest.timePerPlayerInSeconds
-            allMovesFen = gameEngine.getDefaultFen()
             when (gameCreateRequest.isWhitePlayer) {
                 true -> whitePlayer = user
                 false -> blackPlayer = user
@@ -82,14 +82,14 @@ class GameService(
     @Transactional
     fun makeMove(user: User, gameMakeMoveRequest: GameMakeMoveRequest): MakeMoveResponse {
         val game = getUserGame(user)
-        val pieces = gameEngine.convertFenToPiecesList(game.fen)
-        val moves = game.moves.split(",")
+        val pieces = fenConverter.convertFenToPiecesList(game.currentFen)
+        val moves = game.history.split(",")
         val whoseTurn = when {
             moves.size % 2 == 0 || moves.first() == "" -> PlayerColor.WHITE
             else -> PlayerColor.BLACK
         }
-        val playerColor = when (user) {
-            game.whitePlayer -> PlayerColor.WHITE
+        val playerColor = when (user.login) {
+            game.whitePlayer!!.login -> PlayerColor.WHITE
             else -> PlayerColor.BLACK
         }
         val enemyColor = if (playerColor == PlayerColor.WHITE) PlayerColor.BLACK else PlayerColor.WHITE
@@ -98,8 +98,8 @@ class GameService(
             whoseTurn -> {
                 val lastMove =
                     if (moves.first() != "") getGameLastMove(
-                        game.allMovesFen,
-                        game.movesFromTo,
+                        game.previousFen,
+                        game.historyExtended,
                         enemyColor,
                         moves
                     ) else null
@@ -110,23 +110,29 @@ class GameService(
                     gameMakeMoveRequest.promotedPieceName,
                     piecesWithCorrectMoves
                 )
-                val currentFen = gameEngine.convertPieceListToFen(move.pieces)
+                val currentFen = fenConverter.convertPieceListToFen(move.pieces)
 
-                game.fen = currentFen
-                game.allMovesFen += if (game.allMovesFen == "") currentFen else ",$currentFen"
-                game.movesFromTo += if (game.movesFromTo == "") move.nameOfMoveFromTo else ",${move.nameOfMoveFromTo}"
+                game.previousFen = game.currentFen
+                game.currentFen = currentFen
+                game.historyExtended += if (game.historyExtended == "") move.nameOfMoveFromTo else ",${move.nameOfMoveFromTo}"
 
                 val enemyPieces = gameEngine.calculateAndReturnCaptureMoveOfEnemy(pieces, playerColor)
                 val playerKing = findKing(move.pieces, playerColor)
                 val enemyKing = findKing(enemyPieces, enemyColor)
-                val checkedKingsId = getCheckedKingsId(playerColor, enemyPieces, piecesWithCorrectMoves)
+                val piecesWithCorrectMovesAfterMove = getPieceWithCorrectMovesOfPlayer(playerColor, pieces, lastMove)
+                val checkedKingsId = getCheckedKingsId(playerColor, enemyPieces, piecesWithCorrectMovesAfterMove)
+                val enemyPiecesWithFilteredMoves = gameEngine.filterMovesDontCauseCheckAndCoveringKingPieces(
+                    enemyPieces,
+                    enemyColor,
+                    piecesWithCorrectMoves
+                )
 
                 addIsCheckToMoveAndChangeMoveTime(game, checkedKingsId, enemyKing, move, user)
                 checkIfPlayerDontHaveMoveChangeGameStatus(
-                    piecesWithCorrectMoves,
-                    playerColor,
+                    enemyPiecesWithFilteredMoves,
+                    enemyColor,
                     checkedKingsId,
-                    playerKing,
+                    enemyKing,
                     game
                 )
 
@@ -150,19 +156,24 @@ class GameService(
     @Transactional
     fun getUserActiveGameAndReturnMoves(user: User): MakeMoveResponse {
         val game = getUserGame(user)
-        val pieces = gameEngine.convertFenToPiecesList(game.fen)
-        val moves = game.moves.split(",")
+        val pieces = fenConverter.convertFenToPiecesList(game.currentFen)
+        val moves = game.history.split(",")
         val whoseTurn = when {
             moves.size % 2 == 0 || moves.first() == "" -> PlayerColor.WHITE
             else -> PlayerColor.BLACK
         }
-        val playerColor = when (user) {
-            game.whitePlayer -> PlayerColor.WHITE
+        val playerColor = when (user.login) {
+            game.whitePlayer!!.login -> PlayerColor.WHITE
             else -> PlayerColor.BLACK
         }
         val enemyColor = if (whoseTurn == PlayerColor.WHITE) PlayerColor.BLACK else PlayerColor.WHITE
         val lastMove =
-            if (moves.first() != "") getGameLastMove(game.allMovesFen, game.movesFromTo, enemyColor, moves) else null
+            if (moves.first() != "") getGameLastMove(
+                game.previousFen,
+                game.historyExtended,
+                enemyColor,
+                moves
+            ) else null
         val piecesWithCorrectMoves =
             if (playerColor == whoseTurn) getPieceWithCorrectMovesOfPlayer(
                 playerColor,
@@ -171,9 +182,18 @@ class GameService(
             ) else pieces
         val enemyPieces = gameEngine.calculateAndReturnCaptureMoveOfEnemy(pieces, playerColor)
         val checkedKingsId = getCheckedKingsId(playerColor, enemyPieces, piecesWithCorrectMoves)
+        val filteredPieces = piecesWithCorrectMoves.map { piece: Piece ->
+            when {
+                playerColor == whoseTurn && piece.color == playerColor -> PieceDto.fromDomain(piece)
+                else -> {
+                    piece.possibleMoves = emptyList()
+                    PieceDto.fromDomain(piece)
+                }
+            }
+        }
 
         return MakeMoveResponse(
-            piecesWithCorrectMoves.map { PieceDto.fromDomain(it) },
+            filteredPieces,
             GameDto.fromDomain(game),
             whoseTurn.name.lowercase(),
             playerColor.name.lowercase(),
@@ -189,6 +209,10 @@ class GameService(
             .orElseThrow { NotFound("User does not have an active game!") }
 
         game.gameStatus = GameStatus.FINISHED.name
+        game.result = when (user.login) {
+            game.whitePlayer!!.login -> GameResult.BLACK.name
+            else -> GameResult.WHITE.name
+        }
 
         return game
     }
@@ -249,7 +273,7 @@ class GameService(
 
     private fun getUserGame(user: User): Game {
         return gamesRepository.findByUserAndStatus(user, GameStatus.IN_PROGRESS.name)
-            .orElseThrow { RuntimeException("Active game not found!") }
+            .orElseThrow { NotFound("Active game not found!") }
     }
 
     private fun getPieceWithCorrectMovesOfPlayer(
@@ -266,13 +290,12 @@ class GameService(
     }
 
     private fun getGameLastMove(
-        allFenList: String,
+        previousFen: String,
         moveFromTo: String,
         enemyColor: PlayerColor,
         moves: List<String>
     ): MoveHistory {
-        val everyMoveFen = allFenList.split(",")
-        val pieces = gameEngine.convertFenToPiecesList(everyMoveFen[everyMoveFen.size - 2])
+        val pieces = fenConverter.convertFenToPiecesList(previousFen)
         val enemyPieceWithMoves = gameEngine.calculateAndReturnCaptureMoveOfEnemy(pieces, enemyColor)
         val lastMove = moveFromTo.split(",").last()
         val checkCastleMove = moves.last()
@@ -339,12 +362,12 @@ class GameService(
         val moveName = move.nameOfMove.plus(isCheck)
         val moveTime = LocalDateTime.now()
 
-        game.moves = when (game.moves.isBlank()) {
+        game.history = when (game.history.isBlank()) {
             true -> moveName
-            false -> "${game.moves},$moveName"
+            false -> "${game.history},$moveName"
         }
-        when (user) {
-            game.whitePlayer -> {
+        when (user.login) {
+            game.whitePlayer!!.login -> {
                 val timeElapsed = Duration.between(game.lastMoveWhite, moveTime).seconds
                 if (game.lastMoveBlack == null) {
                     game.lastMoveBlack = moveTime

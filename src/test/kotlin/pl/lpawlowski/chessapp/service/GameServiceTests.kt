@@ -1,11 +1,11 @@
 package pl.lpawlowski.chessapp.service
 
 import org.assertj.core.api.Assertions.assertThat
+import org.assertj.core.api.Assertions.within
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import org.springframework.beans.factory.annotation.Autowired
-import pl.lpawlowski.chessapp.constants.PiecesNames
 import pl.lpawlowski.chessapp.constants.PlayerColor
 import pl.lpawlowski.chessapp.exception.NotFound
 import pl.lpawlowski.chessapp.game.DrawOffersStatus
@@ -15,9 +15,10 @@ import pl.lpawlowski.chessapp.model.game.GameCreateRequest
 import pl.lpawlowski.chessapp.model.game.GameMakeMoveRequest
 import pl.lpawlowski.chessapp.model.game.JoinGameRequest
 import pl.lpawlowski.chessapp.model.offers.GameDrawOfferRequest
-import pl.lpawlowski.chessapp.model.user.UserDto
 import pl.lpawlowski.chessapp.repositories.DrawOffersRepository
 import pl.lpawlowski.chessapp.repositories.GamesRepository
+import java.time.LocalDateTime
+import java.time.temporal.ChronoUnit
 
 class GameServiceTests : BasicIntegrationTest() {
     @Autowired
@@ -34,199 +35,191 @@ class GameServiceTests : BasicIntegrationTest() {
 
     @AfterEach
     fun cleanUpDatabase() {
-        userRepository.deleteAll()
         drawOffersRepository.deleteAll()
         gamesRepository.deleteAll()
+        userRepository.deleteAll()
     }
 
     @Test
     fun testCreateGame() {
-        insertUser()
-
-        val allUsers = userRepository.findAll()
-        val user = allUsers[0]
+        val whiteUser = insertUser(testUserLogin1)
         val timePerPlayerInSeconds = 800
-
-        val game = gameService.createGame(user, GameCreateRequest(true, timePerPlayerInSeconds))
+        val game = gameService.createGame(whiteUser, GameCreateRequest(true, timePerPlayerInSeconds, null))
 
         assertThat(game.gameStatus).isEqualTo(GameStatus.CREATED.name)
-        assertThat(game.whitePlayer).isNotNull
+        assertThat(game.whitePlayer!!.login).isEqualTo(whiteUser.login)
         assertThat(game.timePerPlayerInSeconds).isEqualTo(timePerPlayerInSeconds)
-        assertThat(game.moves).isEqualTo("")
-    }
-
-    @Test
-    fun testMakeMove() {
-        val userDto = UserDto(
-            login = "Jarek",
-            password = "Jarek1235!",
-            email = "Jarek@onet.pl"
-        )
-//todo make test
-        userService.saveUser(userDto)
-
-        val allUsers = userRepository.findAll()
-        val whitePlayer = allUsers[0]
-
-        gameService.createGame(whitePlayer, GameCreateRequest(true, 800))
-
-        val allGames = gamesRepository.findAll()
-        val createdGame = allGames[0]
-        val joiningUserDto = UserDto(
-            login = "Kuba",
-            password = "Kuba12345",
-            email = "kuba@onet.pl"
-        )
-
-        userService.saveUser(joiningUserDto)
-
-        val allUsersAfterJoining = userRepository.findAll()
-        val joiningUser = allUsersAfterJoining[1]
-        val correctGameId: Long = createdGame.id!!
-        val movedPiece = PiecesNames.PAWN.name
-        val moves = GameMakeMoveRequest("A5", movedPiece, "")
-
-        gameService.joinGame(joiningUser, JoinGameRequest(correctGameId))
-        gameService.makeMove(whitePlayer, moves)
-
-        val gameInProgress = gamesRepository.findAll()[0]
-
-        assertThat(gameInProgress.moves).isNotEqualTo("")
-        assertThat(gameInProgress.moves).isEqualTo(moves)
+        assertThat(game.history).isEqualTo("")
     }
 
     @Test
     fun testJoinGame() {
-        insertUser()
+        val whiteUser = insertUser(testUserLogin1)
+        val blackUser = insertUser(testUserLogin2)
+        val timePerPlayerInSeconds = 800
+        val game = gameService.createGame(whiteUser, GameCreateRequest(true, timePerPlayerInSeconds, null))
 
-        val allUsers = userRepository.findAll()
-        val user = allUsers[0]
+        gameService.joinGame(blackUser, JoinGameRequest(game.id!!))
 
-        val correctGame = gameService.createGame(user, GameCreateRequest(true, 800))
+        val gameWithJoinedPlayer = gamesRepository.findById(game.id!!)
 
-        insertUser(testUserLogin)
+        assertThat(gameWithJoinedPlayer.get().whitePlayer?.login).isEqualTo(whiteUser.login)
+        assertThat(gameWithJoinedPlayer.get().blackPlayer?.login).isEqualTo(blackUser.login)
+        assertThat(gameWithJoinedPlayer.get().id).isEqualTo(game.id)
+    }
 
-        val joiningUser = userService.findUserByLogin(testUserLogin)
+    @Test
+    fun testJoinWrongGame() {
+        val whiteUser = insertUser(testUserLogin1)
+        val blackUser = insertUser(testUserLogin2)
+        val timePerPlayerInSeconds = 800
+
+        gameService.createGame(whiteUser, GameCreateRequest(true, timePerPlayerInSeconds, null))
+
         val wrongGameId: Long = -1
 
-        assertThrows<RuntimeException> { gameService.joinGame(joiningUser, JoinGameRequest(wrongGameId)) }
-
-        gameService.joinGame(joiningUser, JoinGameRequest(correctGame.id!!))
-
-        val gameWithJoinedPlayer = gamesRepository.findAll()[0]
-
-        assertThat(gameWithJoinedPlayer.whitePlayer?.login).isEqualTo(user.login)
-        assertThat(gameWithJoinedPlayer.blackPlayer?.login).isEqualTo(testUserLogin)
+        assertThrows<RuntimeException> { gameService.joinGame(blackUser, JoinGameRequest(wrongGameId)) }
     }
 
     @Test
     fun testGetAllCreatedGame() {
         val secondUserLogin = "Dawid"
 
-        insertUser(testUserLogin)
+        insertUser(testUserLogin1)
         insertUser(secondUserLogin)
 
-        val firstUser = userService.findUserByLogin(testUserLogin)
+        val firstUser = userService.findUserByLogin(testUserLogin1)
         val secondUser = userService.findUserByLogin(secondUserLogin)
 
-        gameService.createGame(firstUser, GameCreateRequest(true, 800))
-        gameService.createGame(secondUser, GameCreateRequest(false, 200))
+        gameService.createGame(firstUser, GameCreateRequest(true, 800, null))
+        gameService.createGame(secondUser, GameCreateRequest(false, 200, null))
 
         val games = gameService.getAllCreatedGames()
 
         assertThat(games.size).isEqualTo(2)
         assertThat(games[0].gameStatus).isEqualTo(GameStatus.CREATED.name)
-        assertThat(games[0].whitePlayer!!.login).isEqualTo(testUserLogin)
+        assertThat(games[0].whitePlayer!!.login).isEqualTo(testUserLogin1)
         assertThat(games[1].gameStatus).isEqualTo(GameStatus.CREATED.name)
         assertThat(games[1].blackPlayer!!.login).isEqualTo(secondUserLogin)
     }
 
     @Test
     fun testResignGame() {
-        val secondTestLogin = "Arek"
+        val userWhite = insertUser(testUserLogin1)
+        val userBlack = insertUser(testUserLogin2)
+        val game = createGame(userBlack, userWhite, 100)
 
-        insertUser(testUserLogin)
-        insertUser(secondTestLogin)
+        gameService.resign(userBlack)
 
-        val firstUser = userService.findUserByLogin(testUserLogin)
-        val secondUser = userService.findUserByLogin(secondTestLogin)
-
-        val gameId = gameService.createGame(firstUser, GameCreateRequest(true, 800)).id!!
-        val joinGameRequest = JoinGameRequest(gameId)
-
-        gameService.joinGame(secondUser, joinGameRequest)
-        gameService.resign(secondUser)
-
-        val gameResign = gamesRepository.findById(gameId).orElseThrow { NotFound("Game not found!") }
+        val gameResign = gamesRepository.findById(game.id!!).orElseThrow { NotFound("Game not found!") }
 
         assertThat(gameResign.gameStatus).isEqualTo(GameStatus.FINISHED.name)
+        assertThat(gameResign.result).isEqualTo(GameResult.WHITE.name)
+        assertThat(gameResign.blackPlayer!!.login).isEqualTo(userBlack.login)
+        assertThat(gameResign.whitePlayer!!.login).isEqualTo(userWhite.login)
+        assertThat(gameResign.id).isEqualTo(game.id)
     }
 
     @Test
-    fun testGetActiveGameAndReturnMoves() {
-        val secondTestLogin = "Arek"
+    fun testGetActiveGameAndReturnMovesOfPlayerWhichIsTurn() {
+        val userWhite = insertUser(testUserLogin1)
+        val userBlack = insertUser(testUserLogin2)
+        val game = createGame(userBlack, userWhite, 100)
 
-        insertUser(testUserLogin)
-        insertUser(secondTestLogin)
-//todo make test
-        val whitePlayer = userService.findUserByLogin(testUserLogin)
-        val blackPlayer = userService.findUserByLogin(secondTestLogin)
-        val gameId = gameService.createGame(whitePlayer, GameCreateRequest(true, 800)).id!!
-        val joinGameRequest = JoinGameRequest(gameId)
+        val gameResponse = gameService.getUserActiveGameAndReturnMoves(userWhite)
 
-        gameService.joinGame(blackPlayer, joinGameRequest)
+        assertThat(gameResponse.whoseTurn).isEqualTo(PlayerColor.WHITE.name.lowercase())
+        assertThat(gameResponse.fieldFrom).isEqualTo(null)
+        assertThat(gameResponse.fieldTo).isEqualTo(null)
+        assertThat(gameResponse.playerColor).isEqualTo(PlayerColor.WHITE.name.lowercase())
+        assertThat(gameResponse.pieces.size).isEqualTo(32)
+        assertThat(gameResponse.pieces.filter { it.color == PlayerColor.WHITE.name.lowercase() }
+            .any { it.possibleMoves.isNotEmpty() }).isTrue
+        assertThat(gameResponse.pieces.filter { it.color != PlayerColor.WHITE.name.lowercase() }
+            .any { it.possibleMoves.isEmpty() }).isTrue
+        assertThat(gameResponse.gameInfo.id).isEqualTo(game.id)
+        assertThat(gameResponse.kingIsChecked.size).isEqualTo(0)
+    }
 
-        val gameResponse = gameService.getUserActiveGameAndReturnMoves(blackPlayer)
-        val secondUserColor = if (gameResponse.gameInfo.whitePlayer?.login == blackPlayer.login) PlayerColor.WHITE else PlayerColor.BLACK
+    @Test
+    fun testGetActiveGameAndReturnMovesOfPlayerWhichIsNotTurn() {
+        val userWhite = insertUser(testUserLogin1)
+        val userBlack = insertUser(testUserLogin2)
+        val game = createGame(userBlack, userWhite, 100)
+        val gameResponse = gameService.getUserActiveGameAndReturnMoves(userBlack)
 
-        assertThat(gameResponse.gameInfo.whitePlayer?.login).isEqualTo(whitePlayer.login)
-        assertThat(gameResponse.gameInfo.blackPlayer?.login).isEqualTo(blackPlayer.login)
-        assertThat(gameResponse.whoseTurn).isEqualTo(secondUserColor.name)
+        assertThat(gameResponse.whoseTurn).isNotEqualTo(PlayerColor.BLACK.name.lowercase())
+        assertThat(gameResponse.fieldFrom).isEqualTo(null)
+        assertThat(gameResponse.fieldTo).isEqualTo(null)
+        assertThat(gameResponse.playerColor).isEqualTo(PlayerColor.BLACK.name.lowercase())
+        assertThat(gameResponse.pieces.size).isEqualTo(32)
+        assertThat(gameResponse.pieces.all { it.possibleMoves.isEmpty() }).isTrue
+        assertThat(gameResponse.gameInfo.id).isEqualTo(game.id)
+        assertThat(gameResponse.kingIsChecked.size).isEqualTo(0)
+    }
+
+    @Test
+    fun testIsChangedTimeOfLastMove() {
+        val userWhite = insertUser(testUserLogin1)
+        val userBlack = insertUser(testUserLogin2)
+
+        createGame(userBlack, userWhite, 100)
+        Thread.sleep(1000)
+
+        val gameResponse = gameService.getUserActiveGameAndReturnMoves(userBlack)
+
+        assertThat(gameResponse.gameInfo.lastMoveBlack).isNull()
+        assertThat(gameResponse.gameInfo.timeLeftBlack).isEqualTo(100)
+
+        val gameMakeWhiteMoveRequest = GameMakeMoveRequest("A2", "A3", null)
+        val gameAfterWhiteMove = gameService.makeMove(userWhite, gameMakeWhiteMoveRequest)
+
+        assertThat(gameAfterWhiteMove.gameInfo.lastMoveWhite).isCloseTo(LocalDateTime.now(), within(5, ChronoUnit.SECONDS))
+        assertThat(gameAfterWhiteMove.gameInfo.lastMoveBlack).isNotNull
+        assertThat(gameAfterWhiteMove.gameInfo.timeLeftWhite).isNotEqualTo(100)
+        assertThat(gameAfterWhiteMove.gameInfo.moves).isNotEqualTo("")
+        Thread.sleep(1000)
+
+        val gameMakeBlackMoveRequest = GameMakeMoveRequest("A7", "A6", null)
+        val gameAfterBlackMove = gameService.makeMove(userBlack, gameMakeBlackMoveRequest)
+
+        assertThat(gameAfterBlackMove.gameInfo.lastMoveBlack).isNotEqualTo(gameAfterWhiteMove.gameInfo.lastMoveBlack)
+        assertThat(gameAfterBlackMove.gameInfo.timeLeftBlack).isNotEqualTo(100)
     }
 
     @Test
     fun testCreateOffer() {
-        val secondUserLogin = "Adam"
+        val userWhite = insertUser(testUserLogin1)
+        val userBlack = insertUser(testUserLogin2)
+        val game = createGame(userBlack, userWhite, 100)
 
-        insertUser(testUserLogin)
-        insertUser(secondUserLogin)
+        gameService.createOffer(userWhite)
 
-        val firstUser = userService.findUserByLogin(testUserLogin)
-        val secondUser = userService.findUserByLogin(secondUserLogin)
-        val gameId = gameService.createGame(firstUser, GameCreateRequest(true, 800)).id!!
+        val gameAfterOffer = gamesRepository.findById(game.id!!).get()
 
-        gameService.joinGame(secondUser, JoinGameRequest(gameId))
-        gameService.createOffer(firstUser)
-
-        val game = gamesRepository.findById(gameId).get()
-
-        assertThat(game.drawOffers.size).isEqualTo(1)
-        assertThat(game.drawOffers[0].status).isEqualTo(DrawOffersStatus.OFFERED.name)
-        assertThat(game.drawOffers[0].playerOffered.login).isEqualTo(firstUser.login)
+        assertThat(gameAfterOffer.drawOffers.size).isEqualTo(1)
+        assertThat(gameAfterOffer.drawOffers[0].status).isEqualTo(DrawOffersStatus.OFFERED.name)
+        assertThat(gameAfterOffer.drawOffers[0].game.id).isEqualTo(game.id)
+        assertThat(gameAfterOffer.drawOffers[0].playerOffered.login).isEqualTo(userWhite.login)
+        assertThat(gameAfterOffer.drawOffers[0].playerResponding.login).isEqualTo(userBlack.login)
     }
 
     @Test
     fun testResponseOffer() {
-        val secondUserLogin = "Adam"
+        val userWhite = insertUser(testUserLogin1)
+        val userBlack = insertUser(testUserLogin2)
+        val game = createGame(userBlack, userWhite, 100)
 
-        insertUser(testUserLogin)
-        insertUser(secondUserLogin)
+        gameService.createOffer(userWhite)
 
-        val firstUser = userService.findUserByLogin(testUserLogin)
-        val secondUser = userService.findUserByLogin(secondUserLogin)
-        val gameId = gameService.createGame(firstUser, GameCreateRequest(true, 800)).id!!
-
-        gameService.joinGame(secondUser, JoinGameRequest(gameId))
-        gameService.createOffer(firstUser)
-
-        val firstDrawId = gameService.responseOffer(secondUser, GameDrawOfferRequest(gameId, false))
+        val firstDrawId = gameService.responseOffer(userBlack, GameDrawOfferRequest(game.id!!, false))
         val firstDrawOffer = drawOffersRepository.findById(firstDrawId).get()
 
         assertThat(firstDrawOffer.game.gameStatus).isEqualTo(GameStatus.IN_PROGRESS.name)
         assertThat(firstDrawOffer.status).isEqualTo(DrawOffersStatus.REJECTED.name)
-        gameService.createOffer(firstUser)
+        gameService.createOffer(userWhite)
 
-        val secondDrawId = gameService.responseOffer(secondUser, GameDrawOfferRequest(gameId, true))
+        val secondDrawId = gameService.responseOffer(userBlack, GameDrawOfferRequest(game.id!!, true))
         val secondDrawOffer = drawOffersRepository.findById(secondDrawId).get()
 
         assertThat(secondDrawOffer.game.gameStatus).isEqualTo(GameStatus.FINISHED.name)
@@ -236,21 +229,16 @@ class GameServiceTests : BasicIntegrationTest() {
 
     @Test
     fun getDrawOffer() {
-        val secondUserLogin = "Adam"
+        val userWhite = insertUser(testUserLogin1)
+        val userBlack = insertUser(testUserLogin2)
 
-        insertUser(testUserLogin)
-        insertUser(secondUserLogin)
+        createGame(userBlack, userWhite, 100)
+        gameService.createOffer(userWhite)
 
-        val firstUser = userService.findUserByLogin(testUserLogin)
-        val secondUser = userService.findUserByLogin(secondUserLogin)
-        val gameId = gameService.createGame(firstUser, GameCreateRequest(true, 800)).id!!
-
-        gameService.joinGame(secondUser, JoinGameRequest(gameId))
-
-        val drawOfferId = gameService.createOffer(firstUser)
-        val offer = gameService.getDrawOffer(secondUser)
+        val offer = gameService.getDrawOffer(userBlack)
 
         assertThat(offer.status).isEqualTo(DrawOffersStatus.OFFERED.name)
-        assertThat(offer.id).isEqualTo(drawOfferId)
+        assertThat(offer.playerOffered.login).isEqualTo(userWhite.login)
+        assertThat(offer.playerResponding.login).isEqualTo(userBlack.login)
     }
 }

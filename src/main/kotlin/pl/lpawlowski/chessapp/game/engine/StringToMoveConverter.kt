@@ -50,6 +50,7 @@ class StringToMoveConverter {
                 kotlin.math.abs(pieceIdFrom[1].digitToInt() - fieldToId[1].digitToInt()) == 1 && pieceIdFrom[0] != fieldToId[0] && pieces.find { it.id == fieldToId } == null -> MoveType.EN_PASSANT
                 else -> MoveType.NORMAL
             }
+
             else -> MoveType.NORMAL
         }
         val promotedPiece = if (moveType == MoveType.PROM) createPieceByIcon(
@@ -190,9 +191,13 @@ class StringToMoveConverter {
         val promotedPiece = createPiece(promotedPieceName, pieceFrom.color, fieldTo)
         val moveName = captured.plus(fieldTo.lowercase()).plus("=")
             .plus(promotedPiece.getPieceIcon())
+        val promotedChar = when (promotedPieceName) {
+            "Knight" -> 'N'
+            else -> promotedPieceName[0].uppercase()
+        }
         val nameOfMoveFromTo =
             getNameOfMoveFromTo(pieceFrom, fieldFromId, fieldTo, captured).plus("=")
-                .plus(promotedPieceName[0].uppercase())
+                .plus(promotedChar)
 
         return Move(
             moveName,

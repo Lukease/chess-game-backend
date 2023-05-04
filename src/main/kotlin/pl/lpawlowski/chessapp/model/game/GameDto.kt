@@ -22,14 +22,14 @@ data class GameDto(
         fun fromDomain(game: Game): GameDto {
             return GameDto(
                 id = game.id,
-                moves = game.moves,
+                moves = game.history,
                 lastMoveBlack = game.lastMoveBlack,
                 lastMoveWhite = game.lastMoveWhite,
                 timeLeftWhite = game.timeLeftWhite,
                 timeLeftBlack = game.timeLeftBlack,
                 timePerPlayerInSeconds = game.timePerPlayerInSeconds,
                 gameStatus = game.gameStatus,
-                fen = game.fen,
+                fen = game.currentFen,
                 blackPlayer = game.blackPlayer?.let { UserDto.toGameInfo(it) },
                 whitePlayer = game.whitePlayer?.let { UserDto.toGameInfo(it) },
             )
