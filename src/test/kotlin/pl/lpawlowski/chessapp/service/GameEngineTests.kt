@@ -5,14 +5,11 @@ import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.assertThrows
 import org.springframework.beans.factory.annotation.Autowired
 import pl.lpawlowski.chessapp.constants.PiecesNames
 import pl.lpawlowski.chessapp.constants.PlayerColor
-import pl.lpawlowski.chessapp.exception.WrongMove
 import pl.lpawlowski.chessapp.game.engine.FenConverter
 import pl.lpawlowski.chessapp.game.engine.GameEngine
-import pl.lpawlowski.chessapp.game.engine.MoveType
 import pl.lpawlowski.chessapp.model.game.GameMakeMoveRequest
 import pl.lpawlowski.chessapp.repositories.DrawOffersRepository
 import pl.lpawlowski.chessapp.repositories.GamesRepository
@@ -39,28 +36,35 @@ class GameEngineTests : BasicIntegrationTest() {
         gamesRepository.deleteAll()
         userRepository.deleteAll()
     }
+
     @Test
     fun testKingIsChecked() {
-        val playerColor = PlayerColor.BLACK
-        val enemyColor = PlayerColor.WHITE
-        val testsPiecesList = listOf(
-            Bishop(PlayerColor.WHITE, "B2", PiecesNames.BISHOP),
-            King(PlayerColor.WHITE, "E1", PiecesNames.KING),
-            Knight(PlayerColor.WHITE, "C3", PiecesNames.KNIGHT),
-            Queen(PlayerColor.WHITE, "D4", PiecesNames.QUEEN),
-            Rook(PlayerColor.WHITE, "H1", PiecesNames.ROOK),
-            Rook(PlayerColor.WHITE, "A1", PiecesNames.ROOK),
-            Rook(PlayerColor.BLACK, "A7", PiecesNames.ROOK),
-            Pawn(PlayerColor.WHITE, "A3", PiecesNames.PAWN),
-            King(PlayerColor.BLACK, "A8", PiecesNames.KING),
-            Rook(PlayerColor.WHITE, "H8", PiecesNames.ROOK)
-        )
-        val enemyPieces = gameEngine.calculateAndReturnCaptureMoveOfEnemy(testsPiecesList, playerColor)
-        val isPlayerKingChecked = gameEngine.getTheKingIsChecked(playerColor, testsPiecesList, enemyPieces, "")
-//        val isEnemyKingChecked = gameEngine.getTheKingIsChecked(enemyColor, testsPiecesList, "")
+        val userWhite = insertUser(testUserLogin1)
+        val userBlack = insertUser(testUserLogin2)
+        val fen = "4r3/8/k7/8/8/8/8/3QK3"
+        val pieceList = fenConverter.convertFenToPiecesList(fen)
+        val enemyPiecesWithMoves = gameEngine.calculateAndReturnCaptureMoveOfEnemy(pieceList, PlayerColor.WHITE)
+        val isPlayerKingChecked = gameService.getCheckedKingsId(
+            enemyPiecesWithMoves,
+            pieceList.filter { it.color == PlayerColor.WHITE })
+        val game = createGame(userBlack, userWhite, 100, fen)
+        val gameMakeWhiteMoveRequest = GameMakeMoveRequest("D1", "E2", null)
 
-        assertTrue(isPlayerKingChecked)
-//        assertFalse(isEnemyKingChecked)
+        gameService.makeMove(userWhite, gameMakeWhiteMoveRequest)
+
+        val gameAfterWhiteMove = gamesRepository.findById(game.id!!)
+        val piecesAfterMove = fenConverter.convertFenToPiecesList(gameAfterWhiteMove.get().currentFen)
+        val whitePiecesWithMoves = gameEngine.calculateAndReturnCaptureMoveOfEnemy(piecesAfterMove, PlayerColor.BLACK)
+        val isEnemyKingChecked =
+            gameService.getCheckedKingsId(
+                whitePiecesWithMoves,
+                pieceList.filter { it.color == PlayerColor.BLACK })
+
+
+        assertThat(isPlayerKingChecked.size).isEqualTo(1)
+        assertThat(isPlayerKingChecked.first()).isEqualTo("E1")
+        assertThat(isPlayerKingChecked.size).isEqualTo(1)
+        assertThat(isEnemyKingChecked.first()).isEqualTo("A6")
     }
 
     @Test

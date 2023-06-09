@@ -18,6 +18,7 @@ class ExceptionControllerAdvice {
             is WrongCredentialsException -> HttpStatus.BAD_REQUEST
             is WrongMove -> HttpStatus.BAD_REQUEST
             is ForbiddenUser -> HttpStatus.FORBIDDEN
+            is EditForbidden -> HttpStatus.FORBIDDEN
             else -> HttpStatus.INTERNAL_SERVER_ERROR
         }
 

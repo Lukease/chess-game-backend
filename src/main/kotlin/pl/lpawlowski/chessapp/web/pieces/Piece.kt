@@ -17,8 +17,8 @@ abstract class Piece(
     val movingStrategies: List<MovingStrategy>,
     var possibleMoves: List<PossibleMove> = mutableListOf(),
 ) {
-     var currentCoordinate: Coordinate = CoordinateService.getCoordinateById(id)
-     val startingCoordinate: Coordinate = currentCoordinate
+    var currentCoordinate: Coordinate = CoordinateService.getCoordinateById(id)
+    val startingCoordinate: Coordinate = currentCoordinate
     var hasMoved: Boolean = false
     abstract fun getAllPossibleDirections(): List<Vector2d>
 

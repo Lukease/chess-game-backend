@@ -7,6 +7,7 @@ import pl.lpawlowski.chessapp.constants.PlayerColor
 import pl.lpawlowski.chessapp.entities.DrawOffers
 import pl.lpawlowski.chessapp.entities.Game
 import pl.lpawlowski.chessapp.entities.User
+import pl.lpawlowski.chessapp.exception.EditForbidden
 import pl.lpawlowski.chessapp.exception.ForbiddenUser
 import pl.lpawlowski.chessapp.exception.NotFound
 import pl.lpawlowski.chessapp.game.DrawOffersStatus
@@ -120,7 +121,7 @@ class GameService(
                 val playerKing = findKing(move.pieces, playerColor)
                 val enemyKing = findKing(enemyPieces, enemyColor)
                 val piecesWithCorrectMovesAfterMove = getPieceWithCorrectMovesOfPlayer(playerColor, pieces, lastMove)
-                val checkedKingsId = getCheckedKingsId(playerColor, enemyPieces, piecesWithCorrectMovesAfterMove)
+                val checkedKingsId = getCheckedKingsId(enemyPieces, piecesWithCorrectMovesAfterMove)
                 val enemyPiecesWithFilteredMoves = gameEngine.filterMovesDontCauseCheckAndCoveringKingPieces(
                     enemyPieces,
                     enemyColor,
@@ -166,7 +167,10 @@ class GameService(
             game.whitePlayer!!.login -> PlayerColor.WHITE
             else -> PlayerColor.BLACK
         }
-        val enemyColor = if (whoseTurn == PlayerColor.WHITE) PlayerColor.BLACK else PlayerColor.WHITE
+        val enemyColor = when (whoseTurn) {
+            PlayerColor.WHITE -> PlayerColor.BLACK
+            else -> PlayerColor.WHITE
+        }
         val lastMove =
             if (moves.first() != "") getGameLastMove(
                 game.previousFen,
@@ -174,6 +178,12 @@ class GameService(
                 enemyColor,
                 moves
             ) else null
+
+        val updatedGame = when (playerColor) {
+            whoseTurn -> updateMoveTime(user, game)
+            else -> game
+        }
+
         val piecesWithCorrectMoves =
             if (playerColor == whoseTurn) getPieceWithCorrectMovesOfPlayer(
                 playerColor,
@@ -181,7 +191,7 @@ class GameService(
                 lastMove
             ) else pieces
         val enemyPieces = gameEngine.calculateAndReturnCaptureMoveOfEnemy(pieces, playerColor)
-        val checkedKingsId = getCheckedKingsId(playerColor, enemyPieces, piecesWithCorrectMoves)
+        val checkedKingsId = getCheckedKingsId(enemyPieces, piecesWithCorrectMoves)
         val filteredPieces = piecesWithCorrectMoves.map { piece: Piece ->
             when {
                 playerColor == whoseTurn && piece.color == playerColor -> PieceDto.fromDomain(piece)
@@ -194,7 +204,7 @@ class GameService(
 
         return MakeMoveResponse(
             filteredPieces,
-            GameDto.fromDomain(game),
+            GameDto.fromDomain(updatedGame),
             whoseTurn.name.lowercase(),
             playerColor.name.lowercase(),
             checkedKingsId,
@@ -270,6 +280,100 @@ class GameService(
         drawOffersRepository.findByUserAndStatus(user, DrawOffersStatus.OFFERED.name)
             .orElseThrow { NotFound("Draw offer not found!") }
 
+    fun getPositionEditorPieces(user: User): PositionEditorResponse {
+        val fen = user.positionEditorFen
+        val pieces = fenConverter.convertFenToPiecesList(fen)
+
+        return returnPiecesWithMovesForPositionEditor(pieces)
+    }
+
+    @Transactional
+    fun getDefaultPiecesToPositionEditor(user: User): PositionEditorResponse {
+        val fen = gameEngine.getDefaultFen()
+
+        user.positionEditorFen = fen
+
+        val pieces = fenConverter.convertFenToPiecesList(fen)
+
+        return returnPiecesWithMovesForPositionEditor(pieces)
+    }
+
+    @Transactional
+    fun removePieceFromPositionEditor(pieceId: String, user: User): PositionEditorResponse {
+        val fen = user.positionEditorFen
+        val pieces = fenConverter.convertFenToPiecesList(fen)
+        val piece = pieces.find { it.id == pieceId }
+        when {
+            piece != null && piece.isKing() -> throw EditForbidden("You can't remove the King!")
+        }
+        val filteredFen = fenConverter.convertPieceListToFen(pieces.filter { it.id != pieceId })
+
+        user.positionEditorFen = filteredFen
+
+        return returnPiecesWithMovesForPositionEditor(pieces)
+    }
+
+    @Transactional
+    fun changePositionOfPiece(
+        newPositionRequest: ChangePositionOfPieceInPositionEditor,
+        user: User
+    ): PositionEditorResponse {
+        val fen = user.positionEditorFen
+        val pieces = fenConverter.convertFenToPiecesList(fen)
+
+        when {
+            pieces.any { it.id == newPositionRequest.newId } -> {
+                throw EditForbidden("Can't add a piece to this field!")
+            }
+
+            newPositionRequest.isFromBoard -> {
+                val piecesWithChangedPosition = pieces.map { piece ->
+                    when (piece.id) {
+                        newPositionRequest.piece.id -> {
+                            piece.id = newPositionRequest.newId
+                            piece
+                        }
+
+                        else -> piece
+                    }
+                }
+
+                val newFen = fenConverter.convertPieceListToFen(piecesWithChangedPosition)
+                user.positionEditorFen = newFen
+
+                return returnPiecesWithMovesForPositionEditor(piecesWithChangedPosition)
+            }
+
+            else -> {
+                val newPiece = PieceDto.toDomain(newPositionRequest.piece).apply {
+                    id = newPositionRequest.newId
+                }
+                val updatedPieces = pieces.plus(newPiece)
+
+                val newFen = fenConverter.convertPieceListToFen(updatedPieces)
+                user.positionEditorFen = newFen
+
+                return returnPiecesWithMovesForPositionEditor(updatedPieces)
+            }
+        }
+    }
+
+
+    fun returnPiecesWithMovesForPositionEditor(pieces: List<Piece>): PositionEditorResponse {
+        val whitePieces = pieces.filter { it.color == PlayerColor.WHITE }
+        val blackPieces = pieces.filter { it.color == PlayerColor.BLACK }
+        val whitePiecesWithMoves =
+            gameEngine.calculateAndReturnAllPossibleMovesOfPlayer(pieces, PlayerColor.WHITE, blackPieces, null)
+        val blackPiecesWithMoves =
+            gameEngine.calculateAndReturnAllPossibleMovesOfPlayer(pieces, PlayerColor.BLACK, whitePieces, null)
+        val checkedKingsId = getCheckedKingsId(blackPiecesWithMoves, whitePiecesWithMoves)
+
+        return PositionEditorResponse(
+            whitePiecesWithMoves.map { PieceDto.fromDomain(it) }
+                .plus(blackPiecesWithMoves.map { PieceDto.fromDomain(it) }),
+            checkedKingsId
+        )
+    }
 
     private fun getUserGame(user: User): Game {
         return gamesRepository.findByUserAndStatus(user, GameStatus.IN_PROGRESS.name)
@@ -281,7 +385,6 @@ class GameService(
         pieces: List<Piece>,
         lastMove: MoveHistory?
     ): List<Piece> {
-
         val enemyPieces = gameEngine.calculateAndReturnCaptureMoveOfEnemy(pieces, playerColor)
         val playerPiecesWithMoves =
             gameEngine.calculateAndReturnAllPossibleMovesOfPlayer(pieces, playerColor, enemyPieces, lastMove)
@@ -303,24 +406,25 @@ class GameService(
         return gameEngine.checkLastMove(lastMove, enemyPieceWithMoves, enemyColor, checkCastleMove)
     }
 
-    private fun checkPlayerHavePossibleMoves(piecesWithCorrectMoves: List<Piece>, playerColor: PlayerColor): Boolean {
+    private fun checkPlayerHavePossibleMoves(
+        piecesWithCorrectMoves: List<Piece>,
+        playerColor: PlayerColor
+    ): Boolean {
         return piecesWithCorrectMoves.any { it.color == playerColor && it.possibleMoves.isNotEmpty() }
     }
 
-    private fun getCheckedKingsId(
-        playerColor: PlayerColor,
+    fun getCheckedKingsId(
         enemyPieces: List<Piece>,
         playerPieces: List<Piece>
     ): List<String> {
-        val enemyColor = if (playerColor == PlayerColor.WHITE) PlayerColor.BLACK else PlayerColor.WHITE
-        val playerKing = findKing(playerPieces, playerColor)
-        val enemyKing = findKing(enemyPieces, enemyColor)
-        val isPlayerKingChecked =
-            if (gameEngine.checkKingPositionIsChecked(enemyPieces, playerKing)) playerKing.id else null
-        val isEnemyKingChecked =
-            if (gameEngine.checkKingPositionIsChecked(playerPieces, enemyKing)) enemyKing.id else null
+        val whitePlayerKing = findKing(playerPieces, PlayerColor.WHITE)
+        val blackPlayerKing = findKing(enemyPieces, PlayerColor.BLACK)
+        val isWhiteKingChecked =
+            if (gameEngine.checkKingPositionIsChecked(enemyPieces, whitePlayerKing)) whitePlayerKing.id else null
+        val isBlackKingChecked =
+            if (gameEngine.checkKingPositionIsChecked(playerPieces, blackPlayerKing)) blackPlayerKing.id else null
 
-        return listOfNotNull(isPlayerKingChecked, isEnemyKingChecked)
+        return listOfNotNull(isBlackKingChecked, isWhiteKingChecked)
     }
 
     private fun findKing(pieces: List<Piece>, color: PlayerColor): Piece {
@@ -360,21 +464,34 @@ class GameService(
     ): Game {
         val isCheck = if (checkedKingsId.contains(enemyKing.id)) "+" else ""
         val moveName = move.nameOfMove.plus(isCheck)
-        val moveTime = LocalDateTime.now()
 
         game.history = when (game.history.isBlank()) {
             true -> moveName
             false -> "${game.history},$moveName"
         }
+
+        return updateMoveTime(user, game)
+    }
+
+    private fun updateMoveTime(user: User, game: Game): Game {
+        val moveTime = LocalDateTime.now()
+
         when (user.login) {
             game.whitePlayer!!.login -> {
                 val timeElapsed = Duration.between(game.lastMoveWhite, moveTime).seconds
-                if (game.lastMoveBlack == null) {
-                    game.lastMoveBlack = moveTime
-                }
 
                 game.lastMoveWhite = moveTime
                 game.timeLeftWhite -= timeElapsed.toInt()
+
+                when {
+                    game.timeLeftWhite <= 0 -> {
+                        game.result = GameResult.BLACK.name
+                        game.gameStatus = GameStatus.FINISHED.name
+                    }
+                }
+
+                game.lastMoveBlack = game.lastMoveBlack ?: moveTime
+
             }
 
             else -> {
@@ -382,6 +499,13 @@ class GameService(
 
                 game.lastMoveBlack = moveTime
                 game.timeLeftBlack -= timeElapsed.toInt()
+
+                when {
+                    game.timeLeftBlack <= 0 -> {
+                        game.result = GameResult.WHITE.name
+                        game.gameStatus = GameStatus.FINISHED.name
+                    }
+                }
             }
         }
 

@@ -9,7 +9,6 @@ import pl.lpawlowski.chessapp.web.chess_possible_move.MoveHistory
 import pl.lpawlowski.chessapp.web.chess_possible_move.PossibleMove
 import pl.lpawlowski.chessapp.web.chess_possible_move.Vector2d
 import pl.lpawlowski.chessapp.web.pieces.*
-import java.lang.Math.abs
 
 @Service
 class GameEngine(
@@ -117,7 +116,7 @@ class GameEngine(
     }
 
     fun calculateAndReturnCaptureMoveOfEnemy(piecesArray: List<Piece>, color: PlayerColor): List<Piece> {
-        return piecesArray.filter { it.color != color }
+        return getEnemyPieces(piecesArray, color)
             .map { getCaptureMoveOfEnemy(it, piecesArray) }
     }
 

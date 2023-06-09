@@ -1,7 +1,9 @@
 package pl.lpawlowski.chessapp.model.game
 
-import pl.lpawlowski.chessapp.web.pieces.Piece
+import pl.lpawlowski.chessapp.constants.PiecesNames
+import pl.lpawlowski.chessapp.constants.PlayerColor
 import pl.lpawlowski.chessapp.web.chess_possible_move.PossibleMove
+import pl.lpawlowski.chessapp.web.pieces.*
 import java.util.*
 
 class PieceDto(
@@ -20,6 +22,21 @@ class PieceDto(
                 color = piece.color.name.lowercase(),
                 possibleMoves = piece.possibleMoves,
             )
+        }
+
+        fun toDomain(pieceDto: PieceDto): Piece {
+            val color = when (pieceDto.color) {
+                "white" -> PlayerColor.WHITE
+                else -> PlayerColor.BLACK
+            }
+            return when (pieceDto.name) {
+                "Queen" -> Queen(color, pieceDto.id, PiecesNames.QUEEN)
+                "King" -> King(color, pieceDto.id, PiecesNames.KING)
+                "Bishop" -> Bishop(color, pieceDto.id, PiecesNames.BISHOP)
+                "Rook" -> Rook(color, pieceDto.id, PiecesNames.ROOK)
+                "Knight" -> Knight(color, pieceDto.id, PiecesNames.KNIGHT)
+                else -> Pawn(color, pieceDto.id, PiecesNames.PAWN)
+            }
         }
     }
 }

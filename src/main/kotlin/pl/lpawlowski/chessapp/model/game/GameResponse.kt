@@ -13,3 +13,8 @@ data class MakeMoveResponse(
 data class JoinGameResponse(
     val gameId: Long
 )
+
+data class PositionEditorResponse(
+    val pieces: List<PieceDto>,
+    val kingIsChecked: List<String>
+)

@@ -16,4 +16,9 @@ data class JoinGameRequest(
     val gameId: Long
 )
 
+data class ChangePositionOfPieceInPositionEditor(
+    val piece: PieceDto,
+    val newId: String,
+    val isFromBoard: Boolean
+)
 

@@ -15,6 +15,7 @@ class User {
     lateinit var email: String
     var activeToken: String? = null
     var validUtil: LocalDateTime? = null
+    var positionEditorFen: String = ""
     @OneToMany(mappedBy = "whitePlayer")
     var gamesAsWhite: List<Game> = listOf()
     @OneToMany(mappedBy = "blackPlayer")
