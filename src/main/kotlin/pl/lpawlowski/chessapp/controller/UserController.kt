@@ -29,7 +29,7 @@ class UserController(
     @GetMapping
     fun getUserByLogin(@RequestParam("login") login: String): ResponseEntity<*> {
         return try {
-            ResponseEntity.ok(userService.getUserByLogin(login))
+            ResponseEntity.ok(UserDto.fromDomain(userService.getUserByLogin(login)))
         } catch (e: RuntimeException) {
             ResponseEntity.status(HttpStatus.NOT_FOUND).body("$login not found!")
         }
@@ -38,7 +38,7 @@ class UserController(
     @PostMapping("/log-in")
     fun logIn(@RequestBody userLogInRequest: UserLogInRequest): ResponseEntity<*> {
         return try {
-            ResponseEntity.ok(userService.logIn(userLogInRequest))
+            ResponseEntity.ok(UserDto.fromDomain(userService.logIn(userLogInRequest)))
         } catch (e: WrongCredentialsException) {
             e.printStackTrace()
             ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(e.message)
@@ -52,7 +52,7 @@ class UserController(
     ): UserDto {
         val user: User = userService.findUserByAuthorizationToken(authorization)
 
-        return userService.updateUserLogin(user.login, changeLoginRequest.login)
+        return UserDto.fromDomain(userService.updateUserLogin(user.login, changeLoginRequest.login))
     }
 
     @PutMapping("/new-email")
@@ -62,6 +62,18 @@ class UserController(
     ): UserDto {
         val user: User = userService.findUserByAuthorizationToken(authorization)
 
-        return userService.updateUserEmail(user.login, changeEmailRequest.email)
+        return UserDto.fromDomain(userService.updateUserEmail(user.login, changeEmailRequest.email))
+    }
+
+    @GetMapping("/all-players")
+    fun getAllPlayersInfo(): List<PlayerInfoDto> = userService.getAllPlayersInfo()
+
+    @GetMapping("/player")
+    fun getPlayerStats(
+        @RequestHeader("Authorization") authorization: String
+    ): PlayerInfoDto {
+        val user: User = userService.findUserByAuthorizationToken(authorization)
+
+        return PlayerInfoDto.fromDomain(user)
     }
 }

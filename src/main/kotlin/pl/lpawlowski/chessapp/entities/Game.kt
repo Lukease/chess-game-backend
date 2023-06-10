@@ -1,5 +1,6 @@
 package pl.lpawlowski.chessapp.entities
 
+import pl.lpawlowski.chessapp.game.GameStatus
 import java.time.LocalDateTime
 import javax.persistence.*
 
@@ -10,10 +11,17 @@ class Game {
     @Id
     var id: Long? = null
 
-    var moves: String = ""
+    var history: String = ""
     var lastMoveBlack: LocalDateTime? = null
     var lastMoveWhite: LocalDateTime? = null
     var timePerPlayerInSeconds: Int = 800
+    var timeLeftWhite: Int = 800
+    var timeLeftBlack: Int = 800
+    var gameStatus: String = GameStatus.CREATED.name
+    var result: String? = null
+    lateinit var currentFen: String
+    var previousFen: String = ""
+    var historyExtended: String = ""
 
     @ManyToOne
     @JoinColumn(name = "player_white_id")
@@ -22,4 +30,7 @@ class Game {
     @ManyToOne
     @JoinColumn(name = "player_black_id")
     var blackPlayer: User? = null
+
+    @OneToMany(mappedBy = "game", fetch = FetchType.EAGER)
+    var drawOffers: List<DrawOffers> = listOf()
 }

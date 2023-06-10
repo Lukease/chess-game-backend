@@ -9,5 +9,6 @@ data class ChangeEmailRequest(
 )
 
 data class ChangePasswordRequest(
+    val oldPassword: String,
     val password: String
 )

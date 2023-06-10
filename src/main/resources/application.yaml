@@ -19,4 +19,3 @@ spring:
     driverClassName: org.postgresql.Driver
   jackson:
     default-property-inclusion: non_null
-
