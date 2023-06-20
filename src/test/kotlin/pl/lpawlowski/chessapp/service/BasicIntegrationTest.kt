@@ -3,7 +3,6 @@ package pl.lpawlowski.chessapp.service
 import org.apache.commons.lang3.RandomStringUtils
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
-import pl.lpawlowski.chessapp.constants.PlayerColor
 import pl.lpawlowski.chessapp.entities.Game
 import pl.lpawlowski.chessapp.entities.User
 import pl.lpawlowski.chessapp.game.GameStatus
@@ -53,6 +52,7 @@ class BasicIntegrationTest {
             it.password = RandomStringUtils.randomAlphanumeric(7)
             it.activeToken = "abc"
             it.validUtil = LocalDateTime.now().plusMinutes(10)
+            it.positionEditorFen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR"
         })
     }
 }

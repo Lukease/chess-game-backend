@@ -7,7 +7,6 @@ import pl.lpawlowski.chessapp.constants.PlayerColor
 import pl.lpawlowski.chessapp.entities.DrawOffers
 import pl.lpawlowski.chessapp.entities.Game
 import pl.lpawlowski.chessapp.entities.User
-import pl.lpawlowski.chessapp.exception.EditForbidden
 import pl.lpawlowski.chessapp.exception.ForbiddenUser
 import pl.lpawlowski.chessapp.exception.NotFound
 import pl.lpawlowski.chessapp.game.DrawOffersStatus
@@ -280,107 +279,12 @@ class GameService(
         drawOffersRepository.findByUserAndStatus(user, DrawOffersStatus.OFFERED.name)
             .orElseThrow { NotFound("Draw offer not found!") }
 
-    fun getPositionEditorPieces(user: User): PositionEditorResponse {
-        val fen = user.positionEditorFen
-        val pieces = fenConverter.convertFenToPiecesList(fen)
-
-        return returnPiecesWithMovesForPositionEditor(pieces)
-    }
-
-    @Transactional
-    fun getDefaultPiecesToPositionEditor(user: User): PositionEditorResponse {
-        val fen = gameEngine.getDefaultFen()
-
-        user.positionEditorFen = fen
-
-        val pieces = fenConverter.convertFenToPiecesList(fen)
-
-        return returnPiecesWithMovesForPositionEditor(pieces)
-    }
-
-    @Transactional
-    fun removePieceFromPositionEditor(pieceId: String, user: User): PositionEditorResponse {
-        val fen = user.positionEditorFen
-        val pieces = fenConverter.convertFenToPiecesList(fen)
-        val piece = pieces.find { it.id == pieceId }
-        when {
-            piece != null && piece.isKing() -> throw EditForbidden("You can't remove the King!")
-        }
-        val filteredFen = fenConverter.convertPieceListToFen(pieces.filter { it.id != pieceId })
-
-        user.positionEditorFen = filteredFen
-
-        return returnPiecesWithMovesForPositionEditor(pieces)
-    }
-
-    @Transactional
-    fun changePositionOfPiece(
-        newPositionRequest: ChangePositionOfPieceInPositionEditor,
-        user: User
-    ): PositionEditorResponse {
-        val fen = user.positionEditorFen
-        val pieces = fenConverter.convertFenToPiecesList(fen)
-
-        when {
-            pieces.any { it.id == newPositionRequest.newId } -> {
-                throw EditForbidden("Can't add a piece to this field!")
-            }
-
-            newPositionRequest.isFromBoard -> {
-                val piecesWithChangedPosition = pieces.map { piece ->
-                    when (piece.id) {
-                        newPositionRequest.piece.id -> {
-                            piece.id = newPositionRequest.newId
-                            piece
-                        }
-
-                        else -> piece
-                    }
-                }
-
-                val newFen = fenConverter.convertPieceListToFen(piecesWithChangedPosition)
-                user.positionEditorFen = newFen
-
-                return returnPiecesWithMovesForPositionEditor(piecesWithChangedPosition)
-            }
-
-            else -> {
-                val newPiece = PieceDto.toDomain(newPositionRequest.piece).apply {
-                    id = newPositionRequest.newId
-                }
-                val updatedPieces = pieces.plus(newPiece)
-
-                val newFen = fenConverter.convertPieceListToFen(updatedPieces)
-                user.positionEditorFen = newFen
-
-                return returnPiecesWithMovesForPositionEditor(updatedPieces)
-            }
-        }
-    }
-
-
-    fun returnPiecesWithMovesForPositionEditor(pieces: List<Piece>): PositionEditorResponse {
-        val whitePieces = pieces.filter { it.color == PlayerColor.WHITE }
-        val blackPieces = pieces.filter { it.color == PlayerColor.BLACK }
-        val whitePiecesWithMoves =
-            gameEngine.calculateAndReturnAllPossibleMovesOfPlayer(pieces, PlayerColor.WHITE, blackPieces, null)
-        val blackPiecesWithMoves =
-            gameEngine.calculateAndReturnAllPossibleMovesOfPlayer(pieces, PlayerColor.BLACK, whitePieces, null)
-        val checkedKingsId = getCheckedKingsId(blackPiecesWithMoves, whitePiecesWithMoves)
-
-        return PositionEditorResponse(
-            whitePiecesWithMoves.map { PieceDto.fromDomain(it) }
-                .plus(blackPiecesWithMoves.map { PieceDto.fromDomain(it) }),
-            checkedKingsId
-        )
-    }
-
     private fun getUserGame(user: User): Game {
         return gamesRepository.findByUserAndStatus(user, GameStatus.IN_PROGRESS.name)
             .orElseThrow { NotFound("Active game not found!") }
     }
 
-    private fun getPieceWithCorrectMovesOfPlayer(
+    fun getPieceWithCorrectMovesOfPlayer(
         playerColor: PlayerColor,
         pieces: List<Piece>,
         lastMove: MoveHistory?
@@ -418,7 +322,7 @@ class GameService(
         playerPieces: List<Piece>
     ): List<String> {
         val whitePlayerKing = findKing(playerPieces, PlayerColor.WHITE)
-        val blackPlayerKing = findKing(enemyPieces, PlayerColor.BLACK)
+        val blackPlayerKing = findKing(playerPieces, PlayerColor.BLACK)
         val isWhiteKingChecked =
             if (gameEngine.checkKingPositionIsChecked(enemyPieces, whitePlayerKing)) whitePlayerKing.id else null
         val isBlackKingChecked =

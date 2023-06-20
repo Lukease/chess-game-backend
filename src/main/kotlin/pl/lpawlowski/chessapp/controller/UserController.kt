@@ -35,6 +35,9 @@ class UserController(
         }
     }
 
+    @GetMapping("/get-all")
+    fun getAllUsers(): List<UserDto> = userService.getAllUsers().map { UserDto.fromDomain(it) }
+
     @PostMapping("/log-in")
     fun logIn(@RequestBody userLogInRequest: UserLogInRequest): ResponseEntity<*> {
         return try {

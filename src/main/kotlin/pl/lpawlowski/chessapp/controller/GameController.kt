@@ -100,40 +100,4 @@ class GameController(
 
         return DrawOffersDto.fromDomain(gameService.getDrawOffer(user))
     }
-
-    @GetMapping("/default-position-editor")
-    fun getDefaultPiecesPosition(
-        @RequestHeader("Authorization") authorization: String
-    ): PositionEditorResponse {
-        val user: User = userService.findUserByAuthorizationToken(authorization)
-
-        return gameService.getDefaultPiecesToPositionEditor(user)
-    }
-
-    @GetMapping("/position-editor")
-    fun getPositionEditorPieces(
-        @RequestHeader("Authorization") authorization: String
-    ): PositionEditorResponse {
-        val user: User = userService.findUserByAuthorizationToken(authorization)
-
-        return gameService.getPositionEditorPieces(user)
-    }
-
-    @PutMapping("/remove-piece")
-    fun removePieceFromPositionEditor(
-        @RequestHeader("Authorization") authorization: String,
-        @RequestParam pieceId: String
-    ): PositionEditorResponse {
-        val user: User = userService.findUserByAuthorizationToken(authorization)
-        return gameService.removePieceFromPositionEditor(pieceId, user)
-    }
-
-    @PutMapping("/new-position")
-    fun changePositionOfPiece(
-        @RequestHeader("Authorization") authorization: String,
-        @RequestBody changesIds: ChangePositionOfPieceInPositionEditor
-    ): PositionEditorResponse {
-        val user: User = userService.findUserByAuthorizationToken(authorization)
-        return gameService.changePositionOfPiece(changesIds, user)
-    }
 }

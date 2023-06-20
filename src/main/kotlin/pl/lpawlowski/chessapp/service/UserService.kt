@@ -37,6 +37,7 @@ class UserService(
                 val encodedPassword = passwordEncoder.encode(user.password)
 
                 user.password = encodedPassword
+                user.positionEditorFen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR"
 
                 return usersRepository.save(user).id!!
             }
