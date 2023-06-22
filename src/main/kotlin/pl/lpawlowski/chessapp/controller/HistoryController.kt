@@ -26,7 +26,7 @@ class HistoryController(
         return historyService.getAllPlayerGames(user)
     }
 
-    @GetMapping("/get-game")
+    @PutMapping("/get-game")
     fun getHistoryFromGame(
         @RequestHeader("Authorization") authorization: String,
         @RequestBody historyRequest: HistoryRequest

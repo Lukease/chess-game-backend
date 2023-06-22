@@ -1,14 +1,15 @@
 package pl.lpawlowski.chessapp.model.history
 
 import pl.lpawlowski.chessapp.model.game.GameDto
+import pl.lpawlowski.chessapp.model.game.PieceDto
 
-data class HistoryResponse (
-    val fen: String,
-    val fieldFrom: String?,
-    val fieldTo: String?
+data class HistoryResponse(
+    val pieces: List<PieceDto>,
+    val fieldFromTo: List<String>,
+    val gameInfo: GameDto
 )
 
-data class AllHistoryGamesResponse (
+data class AllHistoryGamesResponse(
     val gamesAsWhite: List<GameDto>,
     val gamesAsBlack: List<GameDto>
 )
