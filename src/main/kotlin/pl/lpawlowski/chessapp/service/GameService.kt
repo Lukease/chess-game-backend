@@ -120,7 +120,7 @@ class GameService(
                 val playerKing = findKing(move.pieces, playerColor)
                 val enemyKing = findKing(enemyPieces, enemyColor)
                 val piecesWithCorrectMovesAfterMove = getPieceWithCorrectMovesOfPlayer(playerColor, pieces, lastMove)
-                val checkedKingsId = getCheckedKingsId(enemyPieces, piecesWithCorrectMovesAfterMove)
+                val checkedKingsId = getCheckedKingsId(piecesWithCorrectMovesAfterMove)
                 val enemyPiecesWithFilteredMoves = gameEngine.filterMovesDontCauseCheckAndCoveringKingPieces(
                     enemyPieces,
                     enemyColor,
@@ -190,7 +190,7 @@ class GameService(
                 lastMove
             ) else pieces
         val enemyPieces = gameEngine.calculateAndReturnCaptureMoveOfEnemy(pieces, playerColor)
-        val checkedKingsId = getCheckedKingsId(enemyPieces, piecesWithCorrectMoves)
+        val checkedKingsId = getCheckedKingsId(piecesWithCorrectMoves)
         val filteredPieces = piecesWithCorrectMoves.map { piece: Piece ->
             when {
                 playerColor == whoseTurn && piece.color == playerColor -> PieceDto.fromDomain(piece)
@@ -318,15 +318,16 @@ class GameService(
     }
 
     fun getCheckedKingsId(
-        enemyPieces: List<Piece>,
-        playerPieces: List<Piece>
+        pieces: List<Piece>
     ): List<String> {
-        val whitePlayerKing = findKing(playerPieces, PlayerColor.WHITE)
-        val blackPlayerKing = findKing(playerPieces, PlayerColor.BLACK)
+        val whitePlayerKing = findKing(pieces, PlayerColor.WHITE)
+        val blackPlayerKing = findKing(pieces, PlayerColor.BLACK)
+        val blackPieces = pieces.filter { it.color == PlayerColor.BLACK }
+        val whitePieces = pieces.filter { it.color == PlayerColor.WHITE }
         val isWhiteKingChecked =
-            if (gameEngine.checkKingPositionIsChecked(enemyPieces, whitePlayerKing)) whitePlayerKing.id else null
+            if (gameEngine.checkKingPositionIsChecked(blackPieces, whitePlayerKing)) whitePlayerKing.id else null
         val isBlackKingChecked =
-            if (gameEngine.checkKingPositionIsChecked(playerPieces, blackPlayerKing)) blackPlayerKing.id else null
+            if (gameEngine.checkKingPositionIsChecked(whitePieces, blackPlayerKing)) blackPlayerKing.id else null
 
         return listOfNotNull(isBlackKingChecked, isWhiteKingChecked)
     }

@@ -10,7 +10,6 @@ import pl.lpawlowski.chessapp.constants.PiecesNames
 import pl.lpawlowski.chessapp.constants.PlayerColor
 import pl.lpawlowski.chessapp.game.engine.FenConverter
 import pl.lpawlowski.chessapp.game.engine.GameEngine
-import pl.lpawlowski.chessapp.model.game.GameMakeMoveRequest
 import pl.lpawlowski.chessapp.repositories.DrawOffersRepository
 import pl.lpawlowski.chessapp.repositories.GamesRepository
 import pl.lpawlowski.chessapp.web.pieces.*
@@ -39,34 +38,28 @@ class GameEngineTests : BasicIntegrationTest() {
 
     @Test
     fun testKingIsChecked() {
-        val userWhite = insertUser(testUserLogin1)
-        val userBlack = insertUser(testUserLogin2)
         val fen = "4r3/8/k7/8/8/8/8/3QK3"
         val pieceList = fenConverter.convertFenToPiecesList(fen)
-        val enemyPiecesWithMoves = gameEngine.calculateAndReturnCaptureMoveOfEnemy(pieceList, PlayerColor.WHITE)
-        val isPlayerKingChecked = gameService.getCheckedKingsId(
-            enemyPiecesWithMoves,
-            pieceList.filter { it.color == PlayerColor.WHITE })
-        val game = createGame(userBlack, userWhite, 100, fen)
-        val gameMakeWhiteMoveRequest = GameMakeMoveRequest("D1", "E2", null)
-
-        gameService.makeMove(userWhite, gameMakeWhiteMoveRequest)
-
-        val gameAfterWhiteMove = gamesRepository.findById(game.id!!)
-        val piecesAfterMove = fenConverter.convertFenToPiecesList(gameAfterWhiteMove.get().currentFen)
-        val whitePiecesWithMoves = gameEngine.calculateAndReturnCaptureMoveOfEnemy(piecesAfterMove, PlayerColor.BLACK)
-        val isEnemyKingChecked =
-            gameService.getCheckedKingsId(
-                whitePiecesWithMoves,
-                pieceList.filter { it.color == PlayerColor.BLACK })
-
+        val blackPiecesWithMoves = gameEngine.calculateAndReturnCaptureMoveOfEnemy(pieceList, PlayerColor.WHITE)
+        val whitePiecesWithMoves = gameEngine.calculateAndReturnCaptureMoveOfEnemy(pieceList, PlayerColor.BLACK)
+        val isPlayerKingChecked = gameService.getCheckedKingsId(blackPiecesWithMoves.plus(whitePiecesWithMoves))
 
         assertThat(isPlayerKingChecked.size).isEqualTo(1)
         assertThat(isPlayerKingChecked.first()).isEqualTo("E1")
-        assertThat(isPlayerKingChecked.size).isEqualTo(1)
-        assertThat(isEnemyKingChecked.first()).isEqualTo("A6")
     }
 
+    @Test
+    fun testTwoKingsIsChecked() {
+        val fen = "rnb2bnr/pppppppp/k5q1/8/8/R5K1/PPPPPPPP/RNBQ1BN1"
+        val pieceList = fenConverter.convertFenToPiecesList(fen)
+        val blackPiecesWithMoves = gameEngine.calculateAndReturnCaptureMoveOfEnemy(pieceList, PlayerColor.WHITE)
+        val whitePiecesWithMoves = gameEngine.calculateAndReturnCaptureMoveOfEnemy(pieceList, PlayerColor.BLACK)
+        val isPlayerKingChecked = gameService.getCheckedKingsId(blackPiecesWithMoves.plus(whitePiecesWithMoves))
+
+        assertThat(isPlayerKingChecked.size).isEqualTo(2)
+        assertThat(isPlayerKingChecked).contains("A6")
+        assertThat(isPlayerKingChecked).contains("G3")
+    }
     @Test
     fun testDontCauseCheck() {
         val playerColor = PlayerColor.BLACK

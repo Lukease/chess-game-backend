@@ -3,11 +3,9 @@ package pl.lpawlowski.chessapp.service
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.assertThrows
 import org.springframework.beans.factory.annotation.Autowired
 import pl.lpawlowski.chessapp.constants.PiecesNames
 import pl.lpawlowski.chessapp.constants.PlayerColor
-import pl.lpawlowski.chessapp.exception.WrongMove
 import pl.lpawlowski.chessapp.game.engine.FenConverter
 import pl.lpawlowski.chessapp.model.game.GameMakeMoveRequest
 import pl.lpawlowski.chessapp.repositories.DrawOffersRepository

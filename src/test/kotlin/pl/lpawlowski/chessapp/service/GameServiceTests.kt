@@ -125,7 +125,6 @@ class GameServiceTests : BasicIntegrationTest() {
         val userWhite = insertUser(testUserLogin1)
         val userBlack = insertUser(testUserLogin2)
         val game = createGame(userBlack, userWhite, 100)
-
         val gameResponse = gameService.getUserActiveGameAndReturnMoves(userWhite)
 
         assertThat(gameResponse.whoseTurn).isEqualTo(PlayerColor.WHITE.name.lowercase())
